@@ -73,7 +73,7 @@ export class OpenAiAdapter implements ProviderAdapter {
     }
   }
 
-  /** Some models/servers reject optional fields (temperature on reasoning models, stream_options on old servers), so I drop and retry once per field. */
+  /** Some models and servers reject optional fields, so each gets dropped and retried once. */
   private async post(req: ChatRequest, signal: AbortSignal): Promise<Response> {
     for (let attempt = 0; attempt <= OPTIONAL_PARAMS.length; attempt++) {
       const body = this.body(req)

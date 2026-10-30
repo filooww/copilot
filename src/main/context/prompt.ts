@@ -22,7 +22,7 @@ export interface BuiltPrompt {
   stats: { knowledgeChars: number; transcriptChars: number; droppedChunks: number }
 }
 
-// Character budgets (~3.5 chars/token): I keep the prompt from growing over a 90-minute call (FR-C04, FR-S08).
+// Character budgets (~3.5 chars/token) keep the prompt bounded over a long call.
 const BUDGETS: Record<AnswerKind, { knowledge: number; transcript: number; earlier: number; maxTokens: number }> = {
   say: { knowledge: 1800, transcript: 1200, earlier: 300, maxTokens: 220 },
   points: { knowledge: 2400, transcript: 1600, earlier: 400, maxTokens: 360 },
@@ -68,7 +68,7 @@ export function detectLang(text: string): Lang {
   return 'en'
 }
 
-/** I wrap content from documents/transcript/screen in tags and declare it data, never instructions (FR-C06). */
+/** Strips tags from untrusted text, so it can't break out of its data block. */
 function fence(s: string): string {
   // NFKC folds full-width ＜／＞ into ASCII so look-alike tags are caught too; models also accept "</ cv>".
   return s.normalize('NFKC').replace(/<\s*\/?\s*(cv|job|notes|transcript|screen|earlier_questions|question|system)\b[^>]*>/gi, '')
@@ -149,7 +149,7 @@ export function buildPrompt(p: PromptInput): BuiltPrompt {
 function screenFormat(s: NonNullable<PromptInput['screen']>): string {
   if (s.task === 'solve') {
     return [
-      'The capture may show a coding task, possibly with someone\'s attempt at it. If no coding task is visible, say so in one line and write no code.',
+      "The capture may show a coding task, possibly with someone's attempt at it. If no coding task is visible, say so in one line and write no code.",
       `Otherwise, under short markdown headings: the task in one or two lines; the key idea; a correct reference solution in one fenced block, in the language the task requires or the attempt uses, else ${s.codeLang}; time and space complexity; edge cases.`,
       'Only if an attempt is visible, also say whether it works, name each bug with its line, and how it differs from the reference; otherwise do not mention attempts at all.',
       'End with 2–3 follow-up questions that check the author really understands the solution.'

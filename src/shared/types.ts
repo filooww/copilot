@@ -99,7 +99,6 @@ export interface AppError {
   message: string
   detail?: string
   status?: number
-  /** From a Retry-After header, already clamped by the runner. */
   retryAfterMs?: number
 }
 
@@ -113,7 +112,6 @@ export interface ProviderConfig {
   protocol: ProviderProtocol
   baseUrl: string
   hasKey: boolean
-  /** Number of API keys in the pool; filled by the registry, never stored. */
   keyCount?: number
   allowFallback: boolean
   timeoutMs: number
@@ -180,7 +178,8 @@ export interface KnowledgeDoc {
   createdAt: number
 }
 
-export type ShortcutAction = 'toggleOverlay' | 'toggleListen' | 'answerNow' | 'toggleAuto' | 'snapRegion' | 'solveScreen' | 'scrollUp' | 'scrollDown' | 'expand' | 'panic'
+export type ShortcutAction =
+  'toggleOverlay' | 'toggleListen' | 'answerNow' | 'toggleAuto' | 'snapRegion' | 'solveScreen' | 'scrollUp' | 'scrollDown' | 'expand' | 'panic'
 
 export interface OverlaySettings {
   bounds: { x: number; y: number; width: number; height: number } | null
@@ -214,7 +213,6 @@ export interface Settings {
   contextWindowMin: number
   overlay: OverlaySettings
   shortcuts: Record<ShortcutAction, string>
-  /** Language for a screen solution when the task and the screen don't dictate one. */
   codeLang: string
   history: boolean
   budget: BudgetLimits
@@ -226,13 +224,9 @@ export interface Settings {
 }
 
 export interface WindowSettings {
-  /** Close/minimize hides the main window to the tray instead of quitting; the session keeps running. */
   minimizeToTray: boolean
-  /** Hide the main window while a session runs: the overlay becomes the working window. */
   collapseOnSession: boolean
-  /** Apply WDA_EXCLUDEFROMCAPTURE to the main window and region picker too, so a shared screen does not reveal them. */
   protectFromCapture: boolean
-  /** Emergency stop fully quits the app (process gone) instead of only stopping capture and hiding the overlay. */
   panicQuits: boolean
 }
 

@@ -21,9 +21,7 @@ const HALLUCINATIONS = [
   /^[.\s…♪]*$/
 ]
 
-// On music/noise whisper emits non-speech annotations in brackets/parens/asterisks or musical notes,
-// e.g. "[музыка]", "[тревожная музыка]", "(applause)", "[BLANK_AUDIO]", "♪♪". Real speech almost never
-// carries them, so I strip them out.
+// Non-speech annotations like "[музыка]", "(applause)", "♪♪"; real speech almost never carries them.
 const TAG = /[[({（【][^\])}）】]*[\])}）】]|\*[^*]+\*|[♪♫🎶🎵]+/gu
 
 export function stripTags(text: string): string {
@@ -33,7 +31,6 @@ export function stripTags(text: string): string {
 export function isHallucination(text: string): boolean {
   const t = text.trim().replace(/^[\s.,!-]+/, '')
   if (!t) return true
-  // Nothing but bracketed non-speech tags ("[музыка]") is not speech.
   if (!stripTags(t)) return true
   return HALLUCINATIONS.some((r) => r.test(t))
 }
@@ -59,10 +56,8 @@ function lev(a: string, b: string): number {
   return d[n]
 }
 
-// The vocabulary used to go into whisper's prompt, but whisper.cpp regurgitates the prompt on noise —
-// that is where phantom "Docker"/"Kubernetes" came from. Instead I fix the spelling/casing of a known
-// term the model ALREADY produced; a fuzzy match can only rewrite a word that was recognized, never
-// insert one that was not spoken. Short terms match on casing only, to avoid "reacts" → "React".
+// whisper.cpp echoes its prompt on noise, so the vocabulary only fixes the spelling of words already recognized.
+// Short terms match on casing only, to avoid "reacts" → "React".
 export function applyVocabulary(text: string, vocab: string[]): string {
   const terms = vocab.map((t) => ({ canon: t, key: norm(t) })).filter((t) => t.key.length >= 3)
   if (!terms.length) return text

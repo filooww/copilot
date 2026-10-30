@@ -24,10 +24,7 @@ export interface RunOptions {
 
 const defaultSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
-/**
- * I stream one request with bounded retries. I retry only before the first token:
- * replaying after partial output would show the user two different answers.
- */
+/** Retries happen only before the first token: replaying partial output would show two different answers. */
 export async function runStream(adapter: ProviderAdapter, req: ChatRequest, signal: AbortSignal, cb: RunCallbacks, opts: RunOptions): Promise<RunResult> {
   const retries = opts.retries ?? 2
   const sleep = opts.sleep ?? defaultSleep
@@ -45,7 +42,7 @@ export async function runStream(adapter: ProviderAdapter, req: ChatRequest, sign
       ctrl.abort()
     }
     let timer = setTimeout(fire, opts.timeoutMs)
-    // After the first token I turn the deadline into a stall timer: a stream that goes silent must not hold its slot forever.
+    // After the first token the deadline becomes a stall timer, so a silent stream can't hold its slot forever.
     const idleMs = opts.idleMs ?? Math.max(opts.timeoutMs, 20_000)
     let text = ''
     let firstTokenMs: number | null = null
@@ -98,7 +95,7 @@ export function estimateTokens(req: ChatRequest): number {
   return Math.ceil(req.messages.reduce((n, m) => n + m.content.length, 0) / 3.5)
 }
 
-/** Local reasoning models (qwen3 etc. via Ollama) may inline <think>…</think>; I never show it as an answer. */
+/** Local reasoning models may inline <think>…</think>, which must never show as an answer. */
 export class ThinkFilter {
   private inThink = false
   private pending = ''

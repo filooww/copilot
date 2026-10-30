@@ -58,8 +58,8 @@ const isMac = process.platform === 'darwin'
 if (process.platform === 'win32') app.setAppUserModelId('app.copilot')
 // Chromium has system-audio loopback on macOS (ScreenCaptureKit, 13+) behind these features; Windows uses WASAPI without them.
 if (isMac) app.commandLine.appendSwitch('enable-features', 'MacLoopbackAudioForScreenShare,MacSckSystemAudioLoopbackOverride')
-// I keep runtime data outside OneDrive/Cyrillic paths: whisper.cpp opens model files with ANSI APIs.
-// The app was renamed kairos-m → copilot; I move the old data folder once so settings and models carry over.
+// Runtime data stays outside OneDrive/Cyrillic paths: whisper.cpp opens model files with ANSI APIs.
+// The app was renamed kairos-m → copilot; the old data folder moves once.
 const dataHome = app.getPath('appData')
 const newData = join(dataHome, 'copilot')
 const oldData = join(dataHome, 'kairos-m')
@@ -70,7 +70,7 @@ try {
 }
 // A fresh install has neither folder; only a failed move leaves the old one in use.
 app.setPath('userData', !existsSync(newData) && existsSync(oldData) ? oldData : newData)
-// I key the lock by userData, so it has to come after setPath; app.quit() alone would leave this module
+// The lock is keyed by userData, so it comes after setPath. app.quit() alone would leave this module
 // running, and a second instance would run migrations and mark the live session as interrupted.
 if (!app.requestSingleInstanceLock()) process.exit(0)
 
@@ -101,7 +101,7 @@ function log(kind: string, data: unknown): void {
   try {
     db.logDiag(kind, redactDeep(data))
   } catch {
-    // I never let diagnostics break the app
+    // Diagnostics must never break the app
   }
 }
 
@@ -123,7 +123,7 @@ function profile(): Profile {
   return all.find((p) => p.id === s().activeProfileId) ?? all[0]
 }
 
-// I coalesce the snapshot broadcast: streaming emits per token, the UI needs ≤ 30 fps.
+// Streaming emits per token; the UI needs ≤ 30 fps.
 let emitTimer: NodeJS.Timeout | null = null
 function emit(): void {
   if (emitTimer) return
@@ -134,12 +134,12 @@ function emit(): void {
   }, 33)
 }
 
-// The collapsed dashboard keeps running for audio capture; re-rendering it for nobody costs real CPU, so a hidden window catches up here.
+// The collapsed dashboard still runs audio capture. A hidden window skips broadcasts and catches up on show.
 function catchUpOnShow(w: BrowserWindow): void {
   w.on('show', () => w.webContents.send('km:snapshot', sessionMgr.snap))
 }
 
-// Only the dashboard's meters read levels. Two sources at 10 Hz must not rebroadcast the whole snapshot to every window.
+// Only the dashboard's meters read levels.
 let levelTimer: NodeJS.Timeout | null = null
 function emitLevels(): void {
   if (levelTimer || !dashboard?.isVisible()) return
@@ -199,7 +199,7 @@ function applySettings(prev: Settings | null): void {
   if (sessionMgr?.active) prepareAnswerModels()
 }
 
-// Windows gives no feedback on whether a capture tool honours the flag, so I never show 'set' as a green guarantee.
+// Windows gives no feedback on whether a capture tool honours the flag, so 'set' is never shown as green.
 function applyProtection(): void {
   const want = s().overlay.protect
   const supported = displayProtectionSupported()
@@ -252,7 +252,7 @@ function ensureOverlay(): BrowserWindow {
 function showOverlay(): void {
   const w = ensureOverlay()
   w.setBounds(sanitizeBounds(w.getBounds()))
-  // I show it inactive so the foreground window (IDE, Zoom) keeps keyboard focus (spike S1).
+  // Inactive, so the foreground window keeps keyboard focus.
   w.showInactive()
   sessionMgr.setStatus('overlay', { state: 'ok', label: s().overlay.expanded ? 'развёрнут' : 'компактный' })
 }
@@ -280,20 +280,20 @@ function makeDashboard(): BrowserWindow {
   let trayHintShown = false
   const toTray = () => {
     w.hide()
-    // I nudge once so the window doesn't just "vanish" the first time.
+    // Nudge once, so the window doesn't just vanish the first time.
     if (!trayHintShown && tray) {
       trayHintShown = true
       tray.displayBalloon?.({ title: 'Copilot', content: 'Свёрнуто в трей. Нажмите значок, чтобы открыть.' })
     }
   }
   w.on('close', (e) => {
-    // I hide to tray on close unless the user is quitting; the session (and its capture) keeps running.
+    // Close hides to tray unless quitting; the session keeps running.
     if (!quitting && (s().window.minimizeToTray || sessionMgr.active)) {
       e.preventDefault()
       toTray()
     }
   })
-  // 'minimize' fires after the fact and preventDefault is unreliable, so I hide the already-minimized window instead.
+  // 'minimize' fires after the fact and preventDefault is unreliable, so the minimized window gets hidden.
   w.on('minimize', () => {
     if (!quitting && s().window.minimizeToTray) toTray()
   })
@@ -305,7 +305,6 @@ function makeDashboard(): BrowserWindow {
   return w
 }
 
-// I tie the main window and the region picker to one flag; the overlay keeps its own (overlay.protect).
 function applyWindowProtection(): void {
   const want = s().window.protectFromCapture && displayProtectionSupported()
   if (dashboard && !dashboard.isDestroyed()) dashboard.setContentProtection(want)
@@ -349,7 +348,7 @@ function resumeSession(): string | null {
   return afterStart(sessionMgr.continuePrevious(db.sessionSegments(r.id), r.mode), r.mode, true)
 }
 
-// A cold local model costs 20–60 s on its first request, so I load it while the user is still settling in.
+// A cold local model costs 20–60 s on its first request.
 function prepareAnswerModels(): void {
   if (!s().consent.cloud || s().offline) return
   for (const role of ['quick_answer', 'deep_answer'] as const) {
@@ -370,7 +369,7 @@ function warmLocalModel(): void {
   ).catch(() => {})
 }
 
-// whisper-server holds ~300 MB; I keep it briefly for a quick restart, then give the memory back.
+// whisper-server holds ~300 MB: kept briefly for a quick restart, then released.
 let asrIdleTimer: ReturnType<typeof setTimeout> | undefined
 function scheduleAsrIdleStop(): void {
   clearTimeout(asrIdleTimer)
@@ -420,14 +419,13 @@ function panic(): void {
   overlay?.hide()
   picker?.close()
   refreshTray()
-  // Opt-in: emergency stop leaves nothing running — the whole app quits after capture is down.
   if (s().window.panicQuits) {
     quitting = true
     app.quit()
   }
 }
 
-// A hotkey that does nothing looks broken, so with nothing to act on the overlay says why.
+// A silent hotkey looks broken, so the overlay says why nothing happened.
 function answerHotkey(kind: 'say' | 'deep'): void {
   if (!overlay?.isVisible()) showOverlay()
   if (sessionMgr.active) sessionMgr.answerNow(kind, 'hotkey')
@@ -452,7 +450,7 @@ const SHORTCUT_ACTIONS: Record<ShortcutAction, () => void> = {
   panic
 }
 
-/** I register OS hotkeys, not a keyboard hook, so nothing can leak if the app crashes (FR-O05). */
+/** OS hotkeys, not a keyboard hook, so nothing can leak if the app crashes. */
 function registerShortcuts(): void {
   globalShortcut.unregisterAll()
   shortcutConflicts.length = 0
@@ -490,7 +488,7 @@ async function beginRegion(): Promise<void> {
   const cursor = screen.getCursorScreenPoint()
   const display = screen.getDisplayNearestPoint(cursor)
   const overlayWasVisible = !!overlay?.isVisible()
-  // macOS 15+ ScreenCaptureKit ignores the window sharing flag, so there I always hide the overlay before the snapshot.
+  // macOS 15+ ScreenCaptureKit ignores the window sharing flag, so the overlay hides before the snapshot.
   const protectedOverlay = !isMac && s().overlay.protect && displayProtectionSupported()
   if (overlayWasVisible && !protectedOverlay) overlay!.hide()
   try {
@@ -502,7 +500,13 @@ async function beginRegion(): Promise<void> {
       if (overlayWasVisible && !protectedOverlay) overlay?.showInactive()
     })
     picker.webContents.once('did-finish-load', () => {
-      picker?.webContents.send('km:picker-init', { dataUrl, scale: display.scaleFactor, hasVision: !!registry.resolve('vision', s()), ocr: ocr.installed(), codeLang: s().codeLang })
+      picker?.webContents.send('km:picker-init', {
+        dataUrl,
+        scale: display.scaleFactor,
+        hasVision: !!registry.resolve('vision', s()),
+        ocr: ocr.installed(),
+        codeLang: s().codeLang
+      })
       picker?.show()
       picker?.focus()
     })
@@ -512,7 +516,6 @@ async function beginRegion(): Promise<void> {
   }
 }
 
-// One keypress, no selection: the whole screen under the cursor goes straight to the model.
 let solving = false
 
 async function solveScreen(): Promise<void> {
@@ -524,10 +527,8 @@ async function solveScreen(): Promise<void> {
   solving = true
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
   try {
-    // Same rule as the region snapshot: the overlay must not cover the task in the shot.
     if (overlay?.isVisible() && (isMac || !s().overlay.protect || !displayProtectionSupported())) overlay.hide()
     const shot = await grabDisplay(display)
-    // A solution doesn't fit the compact window, and the user is looking at the task, not at the tray.
     settings.patch({ overlay: { expanded: true } })
     broadcast('km:settings', s())
     if (overlay) {
@@ -610,7 +611,7 @@ function refreshTray(): void {
 function lockDownSessions(): void {
   const dev = process.env.ELECTRON_RENDERER_URL
   const devOrigin = dev ? new URL(dev).origin : null
-  // I never let the UI touch the network: provider calls go through main → NetGuard only.
+  // Provider calls go through main and NetGuard only.
   session.defaultSession.webRequest.onBeforeRequest((details, cb) => {
     const u = details.url
     const allowed =
@@ -631,7 +632,7 @@ function lockDownSessions(): void {
       void desktopCapturer
         .getSources({ types: ['screen'] })
         .then((sources) => {
-          // I use only the audio loopback; the renderer stops the video track immediately.
+          // Audio loopback only; the renderer stops the video track immediately.
           cb(sources[0] ? { video: sources[0], audio: 'loopback' } : null)
         })
         // macOS refuses without the Screen & System Audio Recording permission; null rejects getDisplayMedia instead of hanging it.
@@ -655,7 +656,7 @@ function handle(channel: string, fn: (...args: never[]) => unknown): void {
     try {
       return { ok: true, value: await (fn as (...a: unknown[]) => unknown)(...args) }
     } catch (e) {
-      // A provider's own words ("API key not valid") say far more than the generic label, and detail is already redacted.
+      // The provider's own words say more than the generic label; detail is already redacted.
       const detail = e instanceof ProviderError && e.appError.detail ? ` — ${e.appError.detail}` : ''
       const message = redact((e instanceof Error ? e.message : String(e)) + detail)
       log('ipc_error', { channel, message })
@@ -965,7 +966,6 @@ app.whenReady().then(() => {
 })
 
 app.on('second-instance', showDashboard)
-// macOS: a click on the Dock icon brings the hidden dashboard back.
 app.on('activate', () => {
   if (sessionMgr) showDashboard()
 })

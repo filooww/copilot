@@ -4,7 +4,7 @@ import { AsrAssets, MODELS, type AsrBackend } from './assets'
 import { levelForGate, type SileroGate } from './silero'
 import { applyVocabulary, isHallucination, stripTags, WhisperSidecar } from './whisper'
 
-// Silero needs at least this much detected speech in a clip; below it the clip is music/noise/silence and never reaches whisper.
+// Below this much detected speech a clip never reaches whisper.
 const MIN_SPEECH_S = 0.2
 
 export interface AsrJob {
@@ -33,10 +33,7 @@ export interface AsrEvents {
 
 const LANGS = new Set(['ru', 'uk', 'en'])
 
-/**
- * I serialize work for the single whisper-server. I never drop finals; a partial is
- * superseded by any newer partial or final of the same utterance, so the queue cannot grow.
- */
+/** Finals are never dropped; a newer partial or final supersedes older partials, so the queue can't grow. */
 export class AsrManager {
   private sidecar: WhisperSidecar | null = null
   private queue: AsrJob[] = []
@@ -119,7 +116,7 @@ export class AsrManager {
       await this.sidecar.start()
       this.st = { ...this.st, error: null }
       this.refreshStatus()
-      // GPU builds pay 13–27 s on the first request (spike S2), so I warm it up before the user speaks.
+      // GPU builds pay 13–27 s on the first request.
       void this.sidecar.transcribe(new Int16Array(16000), 'en', '').catch(() => {})
       return true
     } catch (e) {
@@ -157,7 +154,6 @@ export class AsrManager {
           if (job.final) this.emit(job, '', null)
           continue
         }
-        // Silero speech gate: drop music/noise/silence before whisper so it can't hallucinate on them.
         if (this.silero) {
           const speechS = await this.silero.speechSeconds(levelForGate(job.pcm))
           if (speechS >= 0 && speechS < MIN_SPEECH_S) {

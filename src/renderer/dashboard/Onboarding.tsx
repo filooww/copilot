@@ -16,7 +16,7 @@ export function Onboarding({ ctx, asr }: { ctx: Ctx; asr: AsrStatus | null }) {
   const started = useState(() => Date.now())[0]
   const next = () => setStep((s) => Math.min(STEPS.length - 1, s + 1))
   const back = () => setStep((s) => Math.max(0, s - 1))
-  // I take capture consent from the user's explicit «Далее» on the audio step, for exactly the sources left switched on; «Пропустить» grants nothing.
+  // Capture consent comes from an explicit «Далее» for the sources left on; «Пропустить» grants nothing.
   const accept = async () => {
     if (step === 1) await ctx.patch({ consent: { mic: ctx.settings.audio.captureMic, system: ctx.settings.audio.captureSystem } })
     next()
@@ -153,7 +153,6 @@ function StepModel({ ctx }: { ctx: Ctx }) {
   const [adding, setAdding] = useState(false)
   const [test, setTest] = useState<ProviderTestReport | null>(null)
   const [busy, setBusy] = useState(false)
-  // The provider on screen: the one just added or picked, else the one already answering.
   const [selected, setSelected] = useState<string | null>(null)
   const quick = ctx.settings.roles.quick_answer
   const p = providers?.find((x) => x.id === (selected ?? quick?.providerId)) ?? providers?.[0]

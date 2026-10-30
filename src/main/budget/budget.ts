@@ -4,14 +4,10 @@ export type BudgetDecision = { ok: true } | { ok: false; reason: string }
 
 export interface BudgetDeps {
   now: () => number
-  /** Spend already recorded today before this process started (from usage_events). */
   spentTodayBefore: () => number
 }
 
-/**
- * I apply money limits only to paid (non-loopback) providers with a known price.
- * With an unknown price, cost stays null and the UI warns that $-limits cannot be enforced for that model.
- */
+/** Limits apply only to paid providers with a known price; an unknown price leaves cost null. */
 export class BudgetManager {
   private sessionUsd = 0
   private dayUsd = 0
@@ -32,7 +28,7 @@ export class BudgetManager {
     this.day = dayKey(deps.now())
   }
 
-  // The app may stay open across midnight, so I restart the daily limit from zero.
+  // The app may stay open across midnight.
   private rollover(): void {
     const d = dayKey(this.deps.now())
     if (d === this.day) return
@@ -80,7 +76,6 @@ export class BudgetManager {
     this.recent.push(this.deps.now())
   }
 
-  /** Returns cost in USD, or null when the price is unknown. */
   end(providerId: string, model: string, isLocal: boolean, usage: { inputTokens: number; outputTokens: number } | null): number | null {
     this.inflight = Math.max(0, this.inflight - 1)
     if (!usage) return null

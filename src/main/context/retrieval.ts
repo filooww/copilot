@@ -9,7 +9,6 @@ export interface Chunk {
 
 const HEADING = /^(#{1,6}\s+.+|[A-ZА-ЯІЇЄҐ][A-ZА-ЯІЇЄҐ0-9 &/,-]{2,60}:?|.{2,60}:)$/u
 
-/** I split on headings and blank lines into ~maxChars pieces, keeping the nearest heading as the section label. */
 export function chunkText(text: string, maxChars = 700): { section: string; text: string }[] {
   const out: { section: string; text: string }[] = []
   let section = ''
@@ -33,7 +32,7 @@ export function chunkText(text: string, maxChars = 700): { section: string; text
     }
     if (buf.join('\n').length + line.length > maxChars) flush()
     if (line.length > maxChars) {
-      // I prefer a break at whitespace; a run without any (minified text, long URLs) I cut hard so nothing is lost.
+      // Prefer a break at whitespace; a run without any is cut hard so nothing is lost.
       for (const piece of line.match(new RegExp(`.{1,${maxChars}}(\\s|$)|.{${maxChars}}`, 'gs')) ?? [line]) {
         buf.push(piece)
         flush()
@@ -52,7 +51,7 @@ const STOP = new Set(
   )
 )
 
-/** Cheap stemmer: I rely on prefix truncation — enough for BM25 over RU/UA morphology on a few pages of CV. */
+/** Prefix truncation: enough for BM25 over RU/UA morphology on a few pages of CV. */
 export function tokenize(text: string): string[] {
   return (text.toLowerCase().match(/[\p{L}\p{N}+#.]+/gu) ?? [])
     .map((w) => w.replace(/^\.+|\.+$/g, ''))

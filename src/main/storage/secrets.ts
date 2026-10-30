@@ -7,10 +7,7 @@ export interface Cipher {
   decrypt(data: Buffer): string
 }
 
-/**
- * I never let keys touch settings.json or SQLite. The file holds only DPAPI blobs (Electron safeStorage),
- * which decrypt solely under the same Windows user.
- */
+/** Keys never touch settings.json or SQLite; the file holds only Electron safeStorage blobs bound to this OS user. */
 export class SecretStore {
   private blobs: Record<string, string> = {}
 

@@ -15,7 +15,6 @@ const ROLE_LABEL: Record<ModelRole, string> = {
 
 type ClaudeState = Awaited<ReturnType<typeof api.claude.status>>
 
-/** Sign-in state of the official Claude Code CLI; after "Войти" I poll until the browser login lands. */
 function ClaudeLogin() {
   const [st, setSt] = useState<ClaudeState | null>(null)
   const [waiting, setWaiting] = useState(false)
@@ -104,7 +103,6 @@ export function ProviderForm({
     setPreset(p)
     setLabel(presets[p].label)
     setBaseUrl(presets[p].baseUrl)
-    // The CLI-based subscription spends a few seconds just starting up, so it gets the longer wait too.
     setTimeoutMs(p === 'ollama' || p === 'lmstudio' || p === 'custom' || p === 'claude-sub' ? 30000 : 12000)
   }
 
@@ -160,7 +158,7 @@ export function ProviderForm({
                   </a>
                 )}
               </span>
-              {/* A textarea can't mask input, so I hide the keys with -webkit-text-security until the field is focused. */}
+              {/* A textarea can't mask input, so -webkit-text-security hides the keys until focus. */}
               <textarea
                 className="input mono key-input"
                 rows={Math.min(5, Math.max(2, key.split('\n').length))}

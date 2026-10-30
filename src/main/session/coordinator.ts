@@ -126,11 +126,10 @@ export class QuestionCoordinator {
     return { type: 'ignore', reason: kind }
   }
 
-  /** «Ответить сейчас» — always available, even when auto-detection found nothing. */
   manual(trigger: QuestionTrigger, typed?: string): Decision {
     if (typed?.trim()) {
       const t = typed.trim()
-      // I anchor a typed question at the latest heard speech, so everything said so far stays in its context window.
+      // Anchored at the latest heard speech, so everything said so far stays in context.
       const now = Math.max(this.activeQ?.endMs ?? 0, this.recent.at(-1)?.endMs ?? 0)
       return this.open(t, { source: 'user', text: t, startMs: now, endMs: now }, classify(t).kind, 'typed')
     }
@@ -162,13 +161,11 @@ export class QuestionCoordinator {
     this.pending = this.pending.filter((p) => p.questionId !== id)
   }
 
-  /** User corrected a misrecognized question. */
   edit(text: string): Decision {
     if (!this.activeQ || !text.trim()) return { type: 'ignore', reason: 'no_active' }
     return this.revise(this.activeQ, text.trim(), this.activeQ.endMs, classify(text).kind)
   }
 
-  /** «Следующий вопрос»: I clear the board without inventing a new question. */
   clear(): void {
     if (this.activeQ) this.activeQ = { ...this.activeQ, status: 'dismissed' }
     this.activeQ = null

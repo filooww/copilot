@@ -6,7 +6,7 @@ export function setLang(l: UiLang): void {
   document.documentElement.lang = l
 }
 
-// I use the Russian text as the key; missing translations fall back to it.
+// The Russian text is the key; missing translations fall back to it.
 const DICT: Record<string, [uk: string, en: string]> = {
   'Продолжить прошлую сессию': ['Продовжити минулу сесію', 'Resume previous session'],
   Главная: ['Головна', 'Home'],

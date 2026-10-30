@@ -14,7 +14,7 @@ export interface ModelAsset {
   label: string
 }
 
-// I measured these hashes in spike S2 (FINDINGS.md); a mismatch means a corrupted or substituted download.
+// A mismatch means a corrupted or substituted download.
 export const MODELS: Record<string, ModelAsset> = {
   base: {
     name: 'base',
@@ -40,7 +40,7 @@ export const MODELS: Record<string, ModelAsset> = {
 }
 
 const RELEASE = 'b5454'
-// I copied these digests from the GitHub release API for b5454 (2026-10-28) and pin them so a failed API call never skips the check.
+// Pinned so a failed API call can't skip the check.
 export const BINARIES: Record<AsrBackend, { url: string; sha256: string; sizeMb: number; label: string }> = {
   cpu: {
     url: `https://github.com/ggml-org/whisper.cpp/releases/download/${RELEASE}/whisper-bin-x64.zip`,

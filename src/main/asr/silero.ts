@@ -11,7 +11,7 @@ type Ort = typeof import('onnxruntime-node')
 const GATE_PEAK = 0.3 * 32768
 const MAX_GATE_GAIN = 40
 
-/** Silero scores quiet voices low, so I level the clip for the gate only. Measured: noise and clicks still score nothing at this gain. */
+/** Levels the clip for the gate only: Silero scores quiet voices low, and noise still scores nothing at this gain. */
 export function levelForGate(pcm: Int16Array): Int16Array {
   let peak = 1
   for (const v of pcm) peak = Math.max(peak, Math.abs(v))
@@ -20,11 +20,7 @@ export function levelForGate(pcm: Int16Array): Int16Array {
   return Int16Array.from(pcm, (v) => v * gain)
 }
 
-/**
- * Silero VAD speech gate. I run it before whisper so music/silence/noise never reaches the model —
- * that is where "[музыка]" and the phantom prompt words came from. It loads lazily and, if the model
- * or the native runtime is missing, degrades to a pass-through (speechSeconds → -1) so ASR never breaks.
- */
+/** Drops music and noise before whisper. If the model or runtime is missing, speechSeconds returns -1 and clips pass through. */
 export class SileroGate {
   private ort: Ort | null = null
   private session: InferenceSession | null = null
@@ -52,7 +48,6 @@ export class SileroGate {
     await this.loading
   }
 
-  /** Seconds of detected speech in the clip, or -1 when the gate is unavailable (the caller then lets the clip through). */
   async speechSeconds(pcm: Int16Array, threshold = 0.5): Promise<number> {
     await this.load()
     const ort = this.ort
@@ -73,7 +68,7 @@ export class SileroGate {
         const out = await session.run({ [inName]: input, [stateName]: state, [srName]: sr })
         if ((out[outName].data as Float32Array)[0] >= threshold) hits++
         state = out[outStateName]
-        context.set(frame.subarray(CHUNK)) // carry the last 64 samples into the next frame
+        context.set(frame.subarray(CHUNK))
       }
     } catch (e) {
       this.failed = true

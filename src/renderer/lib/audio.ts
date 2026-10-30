@@ -5,7 +5,7 @@ const RATE = 16000
 const FRAME = 320 // 20 ms
 const FRAMES_PER_POST = 5 // A renderer wake-up per 100 ms instead of 20; the detector still sees every 20 ms frame.
 
-// I inline the worklet and load it from a Blob to keep the build single-file and CSP-checked.
+// Inlined and loaded from a Blob to keep the build single-file and CSP-checked.
 const WORKLET = `
 class Pcm extends AudioWorkletProcessor {
   constructor() { super(); this.buf = new Float32Array(${FRAME * FRAMES_PER_POST}); this.n = 0 }
@@ -110,7 +110,6 @@ export class Vad {
     return rms
   }
 
-  /** I flush on pause/stop so the last words are not lost. */
   flush(): void {
     if (this.active) this.finish(false)
   }
@@ -302,7 +301,6 @@ async function openLoopback(): Promise<MediaStream> {
   return s
 }
 
-/** «Слышит ли меня / собеседника?»: short level probe without ASR. */
 export async function probeLevel(source: Source, deviceId: string | null, ms = 4000, onLevel?: (v: number) => void): Promise<number> {
   const stream = source === 'user' ? await openMic(deviceId) : await openLoopback()
   const ctx = new AudioContext()

@@ -35,7 +35,7 @@ export class ProviderRegistry {
   private adapters = new Map<string, ProviderAdapter>()
   private modelCache = new Map<string, { at: number; models: ModelInfo[] }>()
   readonly visionOk = new Map<string, boolean>()
-  /** Last real outcome per provider/model (test or live answer): I show the LLM status green only after one succeeded. */
+  /** Last real outcome per provider/model; LLM status turns green only after a success. */
   readonly textOk = new Map<string, boolean>()
 
   constructor(
@@ -73,7 +73,6 @@ export class ProviderRegistry {
     return this.list().find((p) => p.id === id)
   }
 
-  /** A non-empty apiKey replaces the whole key pool; several keys may be separated by new lines. */
   upsert(cfg: ProviderConfig, apiKey?: string | null): ProviderConfig {
     const keys = apiKey ? parseKeys(apiKey) : []
     if (keys.length) this.setKeys(cfg.id, keys)
@@ -86,7 +85,7 @@ export class ProviderRegistry {
     return saved
   }
 
-  /** A subscription has no key, so every copy is the same login; older builds let "add" create several identical rows. */
+  /** Every copy of a subscription is the same login; older builds could add several identical rows. */
   mergeClaudeSub(roles: Settings['roles']): Settings['roles'] {
     const subs = this.store.providers().filter((p) => p.preset === 'claude-sub')
     if (subs.length < 2) return roles
@@ -111,7 +110,6 @@ export class ProviderRegistry {
     this.adapters.delete(id)
   }
 
-  /** Lets go of everything held for fast answers once the session is over. */
   releaseAll(): void {
     for (const a of this.adapters.values()) a.release?.()
   }
@@ -148,7 +146,7 @@ export class ProviderRegistry {
     return { cfg, model: t.model, adapter, isLocal: isLocalTarget(cfg.baseUrl, t.model) }
   }
 
-  /** I use only providers the user explicitly marked as allowed fallbacks (FR-P05). */
+  /** Only providers the user marked as allowed fallbacks. */
   fallback(role: ModelRole, exclude: string, settings: Settings): ResolvedTarget | null {
     for (const r of [role, 'quick_answer', 'deep_answer'] as ModelRole[]) {
       const t = settings.roles[r]
@@ -221,7 +219,7 @@ export class ProviderRegistry {
   }
 }
 
-/** I check every key of a pool separately, so one dead key doesn't hide behind the healthy ones. */
+/** Each key is checked separately, so one dead key can't hide behind healthy ones. */
 async function testKeys(pool: KeyPoolAdapter): Promise<KeyTest[]> {
   return Promise.all(
     pool.members.map(async (m, index) => {

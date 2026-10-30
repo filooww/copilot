@@ -6,7 +6,6 @@ export interface PresetInfo {
   baseUrl: string
   needsKey: boolean
   keyUrl?: string
-  /** Signs in through an official CLI in the browser instead of an API key. */
   login?: 'claude'
   note: string
 }

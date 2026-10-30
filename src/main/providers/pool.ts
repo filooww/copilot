@@ -15,10 +15,7 @@ export interface PoolKeyState {
   reason: ErrorCode | null
 }
 
-/**
- * I spread requests over several API keys of one provider round-robin. When a key hits its limit,
- * runs out of balance or is rejected before the first token, I move to the next key at once instead of waiting.
- */
+/** Round-robin over several API keys; a limited, empty or rejected key is skipped before the first token. */
 export class KeyPoolAdapter implements ProviderAdapter {
   private next = 0
   private until: number[]
@@ -90,10 +87,7 @@ export class KeyPoolAdapter implements ProviderAdapter {
   }
 }
 
-/**
- * One key per line; commas, semicolons and spaces also separate, since keys never contain them.
- * I drop numbering and labels people paste along with keys ("1.", "Ключ:") and strip quotes.
- */
+/** One key per line or separated by commas, semicolons or spaces; pasted numbering, labels and quotes are dropped. */
 export function parseKeys(raw: string): string[] {
   const tokens = raw.split(/[\s,;]+/).map((k) => k.trim().replace(/^["'`]+|["'`]+$/g, ''))
   return [...new Set(tokens.filter((k) => k.length >= 8 && /^[A-Za-z0-9_\-.:=+/]+$/.test(k) && /\d/.test(k)))]

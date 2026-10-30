@@ -6,12 +6,9 @@ import type { ChatRequest, ErrorCode, ModelInfo, StreamChunk } from '@shared/typ
 import type { AdapterDeps, ProviderAdapter } from './adapter'
 import { appError, ProviderError } from './errors'
 
-/**
- * Claude through the user's own Claude Code login (Pro/Max subscription). I run the official CLI per request:
- * no tools, no MCP, no settings, no saved session — it only turns one prompt into one answer.
- */
+/** Claude through the official CLI and the user's login: no tools, MCP, settings or saved session. */
 
-// A Finder-launched app gets a bare PATH, so I look in the usual install places myself.
+// A Finder-launched app gets a bare PATH.
 export function claudeBin(): string | null {
   const override = process.env.COPILOT_CLAUDE_BIN
   if (override) return existsSync(override) ? override : null
@@ -97,7 +94,6 @@ interface CliProcess {
   exited: Promise<number | null>
 }
 
-/** Flattens the chat into one user turn: the CLI starts a fresh session per request anyway. */
 function userContent(req: ChatRequest): unknown[] {
   const system = req.messages
     .filter((m) => m.role === 'system')
@@ -116,7 +112,7 @@ export class ClaudeCliAdapter implements ProviderAdapter {
 
   constructor(private deps: AdapterDeps) {}
 
-  /** Starting the CLI costs 0.5–2 s, so during a session I keep processes waiting on stdin; they send nothing until a question arrives. */
+  /** Starting the CLI costs 0.5–2 s, so sessions keep processes waiting on stdin; nothing is sent until a question arrives. */
   prepare(model: string): void {
     if (!this.warm.has(model)) this.warm.set(model, [])
     this.fill(model)
@@ -187,7 +183,7 @@ export class ClaudeCliAdapter implements ProviderAdapter {
       '--system-prompt',
       CLI_SYSTEM
     ]
-    // I run it from the temp dir so no project CLAUDE.md or settings can leak into the prompt.
+    // The temp dir keeps any project CLAUDE.md or settings out of the prompt.
     const proc = spawn(claudeBin()!, args, { env: claudeEnv(), cwd: tmpdir(), stdio: ['pipe', 'pipe', 'pipe'] })
     let stderr = ''
     proc.stderr.on('data', (b: Buffer) => (stderr = (stderr + b.toString('utf8')).slice(-2000)))
@@ -250,7 +246,10 @@ export class ClaudeCliAdapter implements ProviderAdapter {
             if (ev.is_error) {
               const msg = ev.result ?? 'ошибка Claude Code'
               const code = classify(msg, ev.api_error_status ?? null)
-              if (/usage credits/i.test(msg)) throw new ProviderError(appError('quota', `${req.model}: на вашей подписке нужны usage credits. Выберите другую модель в Настройки → Провайдеры`))
+              if (/usage credits/i.test(msg))
+                throw new ProviderError(
+                  appError('quota', `${req.model}: на вашей подписке нужны usage credits. Выберите другую модель в Настройки → Провайдеры`)
+                )
               throw new ProviderError({
                 ...appError(code === 'unknown' ? 'server' : code, code === 'auth' ? `${msg}. ${AUTH_HINT}` : msg),
                 status: ev.api_error_status ?? undefined
@@ -281,7 +280,6 @@ export class ClaudeCliAdapter implements ProviderAdapter {
   }
 }
 
-/** Opens Terminal with the official browser login; the token stays in Claude Code's own keychain entry. */
 export function loginScript(bin: string): string {
   return [
     '#!/bin/zsh',

@@ -17,7 +17,6 @@ const WIN_ASR_OPTIONS = [
   }
 ]
 
-// On macOS whisper.cpp comes from Homebrew and runs on Metal, so the large model needs no NVIDIA card.
 const MAC_ASR_OPTIONS = [
   { backend: 'cpu' as const, model: 'base', title: 'Быстрый', size: '≈160 МБ', note: 'Движок whisper.cpp ставится через Homebrew. Подходит любому Mac.' },
   { backend: 'cpu' as const, model: 'small', title: 'Точнее', size: '≈500 МБ', note: 'Лучше на акцентах, чуть медленнее.' },
@@ -32,7 +31,7 @@ const MAC_ASR_OPTIONS = [
 
 const ASR_OPTIONS = isMac ? MAC_ASR_OPTIONS : WIN_ASR_OPTIONS
 
-// A fixed language is ~1.5× faster on CPU (spike S2, audit 2026-10-28) and never turns speech into a translation.
+// A fixed language is ~1.5× faster on CPU and never turns speech into a translation.
 export const ASR_LANG_OPTIONS = (
   <>
     <option value="ru">Русский</option>

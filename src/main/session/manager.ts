@@ -50,7 +50,7 @@ interface Inflight {
   questionId: string
   revision: number
   kind: AnswerKind
-  /** I free the budget slot now: abort() settles asynchronously, and a replacement request starts in the same tick. */
+  /** Frees the budget slot now: abort() settles asynchronously, and a replacement starts in the same tick. */
   release: () => void
 }
 
@@ -132,12 +132,11 @@ export class SessionManager {
     return id
   }
 
-  /** Continue a prior session: start fresh, then preload its transcript so the conversation keeps its context. */
   continuePrevious(prior: TranscriptSegment[], mode: 'practice' | 'live' | 'meeting'): string {
     const id = this.start({ mode })
     const recent = prior.slice(-300)
     if (recent.length) {
-      // The old timestamps are on the old session's clock; I rebase them to just-before-now so they fall in the context window.
+      // Old timestamps are on the old session's clock; rebased to just-before-now to fall in the context window.
       const shift = -1000 - recent[recent.length - 1].endMs
       this.finals = recent.map((f) => ({ ...f, sessionId: id, startMs: f.startMs + shift, endMs: f.endMs + shift }))
       this.snap.segments = this.finals.slice(-40)
@@ -152,7 +151,7 @@ export class SessionManager {
     this.cancelAll()
     if (this.persist) this.d.db.endSession(this.snap.sessionId)
     Object.assign(this.snap, { sessionId: null, state: 'stopped', listening: false, partial: {}, candidates: [] })
-    // Capture statuses come from the renderer only while it captures; after stop nothing else would reset them, so I do it here.
+    // Capture statuses only come from the renderer while it captures, so stop resets them.
     this.snap.status.mic = OFF
     this.snap.status.system = OFF
     this.snap.levels = { user: 0, remote: 0 }
@@ -176,7 +175,6 @@ export class SessionManager {
     this.d.emit()
   }
 
-  /** Emergency stop: I end every stream and request now. */
   panic(): void {
     this.cancelAll()
     this.stop()
@@ -208,7 +206,7 @@ export class SessionManager {
   onSegment(seg: TranscriptSegment): void {
     if (!this.coord || !this.snap.listening || seg.sessionId !== this.snap.sessionId) return
     if (!seg.isFinal) {
-      // In a call my own speech is not answered, so I don't surface its partial as the overlay's live question.
+      // In a call the user's own speech isn't answered, so its partial isn't surfaced.
       if (seg.source === 'user' && !this.answerUserSource) return
       this.snap.partial = { ...this.snap.partial, [seg.source]: seg.text }
       if (this.snap.state === 'listening' || this.snap.state === 'answer_ready') this.snap.state = 'partial_transcript'
@@ -352,7 +350,7 @@ export class SessionManager {
     this.inflight.clear()
   }
 
-  /** Say-it first; I start points once say has its first token, so the long answer never delays the short one. */
+  /** Points start after say's first token, so the long answer never delays the short one. */
   private generate(
     q: QuestionEvent,
     kinds: AnswerKind[],
@@ -511,7 +509,7 @@ export class SessionManager {
           return
         }
         const candidate = !fellBack && !text && ['timeout', 'server', 'rate_limit', 'network'].includes(err.code) ? this.d.fallback(role, target.cfg.id) : null
-        // I apply the cloud consent gate to the fallback too: a local failure must not leak CV and transcript to the cloud.
+        // The consent gate covers the fallback too: a local failure must not leak CV and transcript to the cloud.
         const now = this.d.settings()
         const fb = candidate && (candidate.isLocal || (now.consent.cloud && !now.offline)) ? candidate : null
         this.d.outcome?.(target.cfg.id, target.model, false)

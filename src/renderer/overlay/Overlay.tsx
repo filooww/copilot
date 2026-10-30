@@ -23,7 +23,8 @@ function provenance(a: AnswerEvent | undefined): string {
   if (!a || !a.model) return ''
   const parts = [a.model]
   if (a.firstTokenMs != null) parts.push(`${(a.firstTokenMs / 1000).toFixed(1)} с`)
-  if (a.status === 'done') parts.push(a.usageCostUsd == null ? t('Цена неизвестна') : a.usageCostUsd === 0 ? (a.local ? 'локально' : 'подписка') : `$${a.usageCostUsd.toFixed(4)}`)
+  if (a.status === 'done')
+    parts.push(a.usageCostUsd == null ? t('Цена неизвестна') : a.usageCostUsd === 0 ? (a.local ? 'локально' : 'подписка') : `$${a.usageCostUsd.toFixed(4)}`)
   return parts.join(' · ')
 }
 
@@ -47,7 +48,7 @@ export function Overlay() {
   const expandedNow = settings?.overlay.expanded ?? false
   const ready = !!(snap && settings)
 
-  // I make compact mode follow the content so the answer is never silently cut off; expanded keeps the user's size.
+  // Compact mode follows the content so the answer is never cut off; expanded keeps the user's size.
   useEffect(() => {
     const el = inner.current
     if (!el || expandedNow) return
@@ -259,7 +260,8 @@ export function Overlay() {
               {snap.notice && <div className="ov-note">{snap.notice}</div>}
               {!q && !live && !snap.candidates.length && snap.sessionId && (
                 <div className="faint ov-hint">
-                  Жду вопрос. <kbd>{prettyShortcut(keys.answerNow)}</kbd> — ответить сразу, <kbd>{prettyShortcut(keys.solveScreen)}</kbd> — решить задачу с экрана.
+                  Жду вопрос. <kbd>{prettyShortcut(keys.answerNow)}</kbd> — ответить сразу, <kbd>{prettyShortcut(keys.solveScreen)}</kbd> — решить задачу с
+                  экрана.
                   {settings.autoAnswer ? '' : ' Авто выключено: ответ только по кнопке.'}
                 </div>
               )}

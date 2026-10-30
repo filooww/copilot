@@ -60,7 +60,6 @@ function segDist(px: number, py: number, ax: number, ay: number, bx: number, by:
   return Math.hypot(px - (ax + t * dx), py - (ay + t * dy))
 }
 
-/** App mark: a forward double-chevron (amber over white) on a deep ink tile. */
 export function appIcon(size: number): Buffer {
   const s = size
   const r = s * 0.22
@@ -101,7 +100,6 @@ export function solidPng(size: number, rgb: [number, number, number]): Buffer {
   return makePng(size, size, () => [rgb[0], rgb[1], rgb[2], 255])
 }
 
-/** Windows .ico with embedded PNG images (supported since Vista). */
 export function makeIco(pngs: { size: number; data: Buffer }[]): Buffer {
   const header = Buffer.alloc(6 + 16 * pngs.length)
   header.writeUInt16LE(0, 0)

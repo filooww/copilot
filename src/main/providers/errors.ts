@@ -23,14 +23,14 @@ const MESSAGES: Record<ErrorCode, string> = {
 }
 
 export function appError(code: ErrorCode, detail?: string, status?: number): AppError {
-  // Providers echo the rejected key in 401 bodies; detail reaches the UI and the screen may be shared, so I redact it.
+  // Providers echo the rejected key in 401 bodies, and detail reaches a possibly shared screen.
   return { code, message: MESSAGES[code], detail: detail === undefined ? undefined : redact(detail).slice(0, 400), status }
 }
 
 export function fromHttp(status: number, body: string, headers?: Headers | null): ProviderError {
   const lower = body.toLowerCase()
   let code: ErrorCode
-  // Gemini answers a bad key with 400 INVALID_ARGUMENT, so I look at the body too; otherwise a key pool would never skip it.
+  // Gemini answers a bad key with 400 INVALID_ARGUMENT, so the body counts too.
   if (status === 401 || status === 403 || /api_key_invalid|api key not valid|invalid api key|incorrect api key|api key expired/.test(lower)) code = 'auth'
   else if (status === 402 || /insufficient_quota|credit balance|billing|quota exceeded/.test(lower)) code = 'quota'
   else if (status === 429) code = 'rate_limit'
@@ -79,7 +79,7 @@ export function isRetryable(err: AppError): boolean {
   return err.code === 'rate_limit' || err.code === 'server' || err.code === 'network'
 }
 
-/** Parameter-rejection 400s I can recover from by dropping an optional field. */
+/** 400s that dropping an optional field can fix. */
 export function rejectsParam(err: AppError, param: string): boolean {
   return err.code === 'bad_request' && (err.detail ?? '').toLowerCase().includes(param)
 }

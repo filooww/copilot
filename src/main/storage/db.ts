@@ -68,7 +68,7 @@ export class Db {
     this.sql.close()
   }
 
-  /** I mark sessions left 'active' by a crash as 'interrupted'; their transcript is already on disk (WAL). */
+  /** Sessions left 'active' by a crash become 'interrupted'; their transcript is already on disk. */
   recoverInterrupted(): number {
     return Number(this.sql.prepare("UPDATE sessions SET status='interrupted', ended_at=COALESCE(ended_at, ?) WHERE status='active'").run(Date.now()).changes)
   }
@@ -173,7 +173,6 @@ export class Db {
     }
   }
 
-  /** The most recent finished session that has any transcript — the one "Continue previous session" picks up. */
   lastResumable(): ResumableSession | null {
     const r = this.sql
       .prepare(

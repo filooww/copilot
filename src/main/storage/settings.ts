@@ -22,10 +22,11 @@ const OLD_MAC_SHORTCUTS: Partial<Record<ShortcutAction, string[]>> = {
   toggleListen: ['Control+Alt+L']
 }
 
-/** Saved settings pin the old defaults; I move only those, so a hotkey the user chose stays. */
+/** Moves only the old defaults, so a hotkey the user chose stays. */
 export function easyMacShortcuts(cur: Record<ShortcutAction, string>): Partial<Record<ShortcutAction, string>> {
   const out: Partial<Record<ShortcutAction, string>> = {}
-  for (const [action, old] of Object.entries(OLD_MAC_SHORTCUTS) as [ShortcutAction, string[]][]) if (old.includes(cur[action])) out[action] = MAC_SHORTCUTS[action]
+  for (const [action, old] of Object.entries(OLD_MAC_SHORTCUTS) as [ShortcutAction, string[]][])
+    if (old.includes(cur[action])) out[action] = MAC_SHORTCUTS[action]
   return out
 }
 

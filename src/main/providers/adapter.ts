@@ -12,11 +12,9 @@ export interface AdapterDeps {
 
 export interface ProviderAdapter {
   listModels(signal?: AbortSignal): Promise<ModelInfo[]>
-  /** Throws ProviderError. I don't retry here — RequestRunner owns retries so they never happen after the first token. */
+  /** Throws ProviderError. Retries belong to RequestRunner, so they never happen after the first token. */
   stream(req: ChatRequest, signal: AbortSignal): AsyncIterable<StreamChunk>
-  /** Optional: get ready for fast answers from this model during a session. */
   prepare?(model: string): void
-  /** Optional: give back whatever prepare() is holding. */
   release?(): void
 }
 
