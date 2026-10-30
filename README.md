@@ -22,13 +22,17 @@
 - Горячие клавиши на цифрах: нажимаются одной рукой и не зависят от раскладки.
 
 ## Скриншоты
-Скриншоты сделаны автором оригинала в Windows, на Mac оформление окон отличается.
+Данные на снимках вымышленные.
 
 ![Главный экран](docs/screenshots/dashboard.png)
 
-| Окно подсказок | Прозрачный фон |
+![Сессия](docs/screenshots/session.png)
+
+| Окно подсказок | Решение задачи с экрана |
 |---|---|
-| ![Окно подсказок](docs/screenshots/overlay-answer.png) | ![Прозрачный фон](docs/screenshots/overlay-transparent.png) |
+| ![Окно подсказок](docs/screenshots/overlay-answer.png) | ![Решение задачи](docs/screenshots/overlay-solve.png) |
+
+![Полупрозрачное окно подсказок](docs/screenshots/overlay-transparent.png)
 
 | Первый запуск | Согласия |
 |---|---|
