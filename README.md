@@ -47,7 +47,7 @@ The data in these screenshots is fictional.
 ## Install on a Mac
 You need macOS 13 or later, Apple Silicon, [Node.js](https://nodejs.org), and [Homebrew](https://brew.sh). There is no prebuilt release, so you build the app from source.
 
-If you plan to rebuild the app more than once, [create the signing certificate](#signing-certificate) first.
+If you plan to rebuild the app more than once, [create a signing certificate](#if-you-dont-have-a-signing-certificate) first.
 
 ```bash
 git clone https://github.com/filooww/copilot.git
@@ -67,17 +67,19 @@ npm run install:mac
 
 The app appears in Applications. On first launch, allow access to the microphone and screen recording. Without screen recording, the app can't hear the other person.
 
-### Signing certificate
-macOS ties privacy permissions to the app's signature. Without a stable signature, every rebuild counts as a new app, so macOS keeps asking for permissions or silently stops granting them. If you only build once, you can skip this step.
+### If you don't have a signing certificate
+You don't need one to build and run the app. Without it, `scripts/sign-mac.sh` prints a warning and uses an ad-hoc signature instead. The app works normally, and macOS remembers the permissions you grant.
 
-To keep permissions across rebuilds:
+The catch comes when you rebuild. macOS ties privacy permissions to the app's signature, and an ad-hoc signature changes with every build. Each new build counts as a different app, so macOS asks again, or the toggle in System Settings looks on while the app still can't hear anything.
+
+If you only build once, you can ignore this. If you plan to rebuild or update the app, create a free self-signed certificate. You only do this once:
 
 1. Open Keychain Access. On recent macOS versions it is at `/System/Library/CoreServices/Applications/Keychain Access.app`.
 2. Choose **Keychain Access → Certificate Assistant → Create a Certificate**.
 3. Set the name to `Copilot Dev`, the identity type to **Self Signed Root**, and the certificate type to **Code Signing**.
 4. Run `npm run install:mac` again.
 
-`scripts/sign-mac.sh` finds the certificate by name. Without it, the script falls back to an ad-hoc signature and prints a warning.
+The script finds the certificate by name, so permissions now carry over between builds.
 
 If permissions are already stuck, reset them and launch the app again:
 
