@@ -45,9 +45,21 @@ The data in these screenshots is fictional.
 | ![Providers](docs/screenshots/settings-providers.png) | ![Privacy](docs/screenshots/settings-privacy.png) |
 
 ## Install on a Mac
-You need macOS 13 or later, Apple Silicon, [Node.js](https://nodejs.org), and [Homebrew](https://brew.sh). There is no prebuilt release, so you build the app from source.
+You need macOS 13 or later, Apple Silicon, and [Homebrew](https://brew.sh), which the app uses to install speech recognition.
 
-If you plan to rebuild the app more than once, [create a signing certificate](#if-you-dont-have-a-signing-certificate) first.
+### Download
+1. Download the `.dmg` from [Releases](https://github.com/filooww/copilot/releases) and drag Copilot to Applications.
+2. Open the app. macOS will block it because it is not notarized by Apple.
+3. Go to System Settings → Privacy & Security and click **Open Anyway**. Or run this command once:
+
+```bash
+xattr -cr /Applications/Copilot.app
+```
+
+4. Allow access to the microphone and screen recording. Without screen recording, the app can't hear the other person.
+
+### Build from source
+You also need [Node.js](https://nodejs.org). If you plan to rebuild the app more than once, [create a signing certificate](#if-you-dont-have-a-signing-certificate) first.
 
 ```bash
 git clone https://github.com/filooww/copilot.git
