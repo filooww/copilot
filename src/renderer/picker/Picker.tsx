@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ScreenTask } from '@shared/types'
+import { CODE_LANGS, type ScreenTask } from '@shared/types'
 import { api, km, type PickerInit } from '../lib/api'
 import { t } from '../lib/i18n'
 
@@ -14,8 +14,6 @@ function norm(a: { x: number; y: number }, b: { x: number; y: number }): Rect {
   return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(a.x - b.x), h: Math.abs(a.y - b.y) }
 }
 
-const LANGS = ['Python', 'TypeScript', 'JavaScript', 'Java', 'Go', 'C#', 'C++', 'Kotlin', 'SQL']
-
 export function Picker() {
   const [init, setInit] = useState<PickerInit | null>(null)
   const [sel, setSel] = useState<Rect | null>(null)
@@ -28,7 +26,14 @@ export function Picker() {
   const [busy, setBusy] = useState(false)
   const img = useRef<HTMLImageElement>(null)
 
-  useEffect(() => km.onPickerInit((m) => setInit(m)), [])
+  useEffect(
+    () =>
+      km.onPickerInit((m) => {
+        setInit(m)
+        setCodeLang(m.codeLang)
+      }),
+    []
+  )
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') void api.screen.cancel()
@@ -105,6 +110,9 @@ export function Picker() {
             <button className="btn primary sm" disabled={busy} onClick={() => void submit('review')}>
               {t('Разбери код')}
             </button>
+            <button className="btn primary sm" disabled={busy} onClick={() => void submit('solve')}>
+              {t('Реши')}
+            </button>
           </div>
           <div className="row wrap" style={{ marginTop: 8 }}>
             <label className="row small" style={{ gap: 6 }}>
@@ -112,7 +120,7 @@ export function Picker() {
             </label>
             {withCode && (
               <select className="input" style={{ width: 130, height: 28 }} value={codeLang} onChange={(e) => setCodeLang(e.target.value)}>
-                {LANGS.map((l) => (
+                {CODE_LANGS.map((l) => (
                   <option key={l}>{l}</option>
                 ))}
               </select>

@@ -26,9 +26,9 @@ export async function runDiagnostics(d: DiagDeps): Promise<DiagReport> {
 
   add(
     'secrets',
-    'Хранилище ключей (DPAPI)',
+    process.platform === 'darwin' ? 'Хранилище ключей (Связка ключей)' : 'Хранилище ключей (DPAPI)',
     d.secretsOk,
-    d.secretsOk ? 'Ключи шифруются системой Windows под вашей учётной записью' : 'Шифрование недоступно — ключи не сохраняются'
+    d.secretsOk ? 'Ключи шифруются системой под вашей учётной записью' : 'Шифрование недоступно — ключи не сохраняются'
   )
 
   const st = d.asr.status
@@ -72,7 +72,9 @@ export async function runDiagnostics(d: DiagDeps): Promise<DiagReport> {
     'Защита окна подсказок от захвата',
     d.protectionSupported ? null : false,
     d.protectionSupported
-      ? 'Системный флаг WDA_EXCLUDEFROMCAPTURE доступен. Результат зависит от способа захвата — проверьте у получателя: начните демонстрацию экрана и попросите собеседника сказать, видно ли окно подсказок.'
+      ? process.platform === 'darwin'
+        ? 'Флаг NSWindowSharingNone установлен, но программы на ScreenCaptureKit его игнорируют. Надёжно на Mac только показывать отдельное окно, а не весь экран.'
+        : 'Системный флаг WDA_EXCLUDEFROMCAPTURE доступен. Результат зависит от способа захвата — проверьте у получателя: начните демонстрацию экрана и попросите собеседника сказать, видно ли окно подсказок.'
       : 'Нужна Windows 10 2004 или новее'
   )
 

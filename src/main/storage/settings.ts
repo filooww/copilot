@@ -1,5 +1,33 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import type { DeepPartial, ProviderConfig, Settings } from '@shared/types'
+import type { DeepPartial, ProviderConfig, Settings, ShortcutAction } from '@shared/types'
+
+// One modifier and a digit: one hand reaches them, the system leaves them free, and a digit is the same key on any layout.
+const MAC_SHORTCUTS: Partial<Record<ShortcutAction, string>> = {
+  answerNow: 'Control+1',
+  solveScreen: 'Control+2',
+  expand: 'Control+3',
+  snapRegion: 'Control+4',
+  toggleAuto: 'Control+5',
+  toggleOverlay: 'Control+6',
+  toggleListen: 'Control+7'
+}
+
+const OLD_MAC_SHORTCUTS: Partial<Record<ShortcutAction, string[]>> = {
+  answerNow: ['Control+Alt+Enter', 'Control+Alt+A'],
+  solveScreen: ['Control+Alt+X'],
+  expand: ['Control+Alt+E'],
+  snapRegion: ['Control+Alt+S'],
+  toggleAuto: ['Control+Alt+Q'],
+  toggleOverlay: ['Control+Alt+H'],
+  toggleListen: ['Control+Alt+L']
+}
+
+/** Saved settings pin the old defaults; I move only those, so a hotkey the user chose stays. */
+export function easyMacShortcuts(cur: Record<ShortcutAction, string>): Partial<Record<ShortcutAction, string>> {
+  const out: Partial<Record<ShortcutAction, string>> = {}
+  for (const [action, old] of Object.entries(OLD_MAC_SHORTCUTS) as [ShortcutAction, string[]][]) if (old.includes(cur[action])) out[action] = MAC_SHORTCUTS[action]
+  return out
+}
 
 export const DEFAULT_SETTINGS: Settings = {
   onboarded: false,
@@ -24,19 +52,23 @@ export const DEFAULT_SETTINGS: Settings = {
     toggleOverlay: 'Control+Alt+H',
     toggleListen: 'Control+Alt+L',
     answerNow: 'Control+Alt+Enter',
+    toggleAuto: 'Control+Alt+Q',
     snapRegion: 'Control+Alt+S',
+    solveScreen: 'Control+Alt+X',
     scrollUp: 'Control+Alt+Up',
     scrollDown: 'Control+Alt+Down',
     expand: 'Control+Alt+E',
-    panic: 'Control+Alt+Backspace'
+    panic: 'Control+Alt+Backspace',
+    ...(process.platform === 'darwin' ? MAC_SHORTCUTS : {})
   },
+  codeLang: 'Python',
   history: true,
   budget: { perSessionUsd: null, perDayUsd: null, requestsPerMinute: 20, maxConcurrent: 2 },
   pricing: {},
   roles: {},
   activeProfileId: 'default',
   consent: { mic: false, system: false, screen: false, cloud: false, history: false, participants: false, acceptedAt: null },
-  window: { minimizeToTray: true, protectFromCapture: true, panicQuits: false }
+  window: { minimizeToTray: true, collapseOnSession: true, protectFromCapture: true, panicQuits: false }
 }
 
 export function deepMerge<T>(base: T, patch: DeepPartial<T> | undefined): T {

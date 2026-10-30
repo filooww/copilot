@@ -18,6 +18,7 @@ import type {
 
 interface Bridge {
   invoke<T>(channel: string, ...args: unknown[]): Promise<T>
+  platform: string
   onSnapshot(cb: (s: AppSnapshot) => void): () => void
   onSettings(cb: (s: Settings) => void): () => void
   onAsr(cb: (s: AsrStatus) => void): () => void
@@ -31,6 +32,7 @@ interface Bridge {
 
 export type CaptureMsg = { action: 'start'; sessionId: string; startedAt: number } | { action: 'stop' | 'pause' | 'resume' }
 export interface PickerInit {
+  codeLang: string
   dataUrl: string
   scale: number
   hasVision: boolean
@@ -42,6 +44,7 @@ export interface PresetInfo {
   protocol: string
   baseUrl: string
   needsKey: boolean
+  login?: 'claude'
   keyUrl?: string
   note: string
 }
@@ -59,12 +62,24 @@ export interface InitialState {
 
 export interface ProviderTestReport {
   models: { ok: true; latencyMs: number; models: number } | { ok: false; error: { code: string; message: string; detail?: string } }
+  keys?: { index: number; ok: boolean; error?: string }[]
   text: { ok: boolean; ms: number | null; sample?: string; error?: string } | null
   vision: { ok: boolean; error?: string } | null
 }
 
 export const km = (window as unknown as { km: Bridge }).km
 const call = km.invoke
+export const isMac = km.platform === 'darwin'
+
+/** "Control+Alt+A" → "⌃⌥A" on a Mac, "Ctrl+Alt+A" elsewhere. */
+export function prettyShortcut(accel: string): string {
+  if (!isMac) return accel.replace('Control', 'Ctrl')
+  const sym: Record<string, string> = { Control: '⌃', Alt: '⌥', Shift: '⇧', Super: '⌘', Enter: '↩', Backspace: '⌫', Up: '↑', Down: '↓', Space: '␣' }
+  return accel
+    .split('+')
+    .map((k) => sym[k] ?? k)
+    .join('')
+}
 
 export const api = {
   state: () => call<InitialState>('km:getState'),
@@ -76,8 +91,12 @@ export const api = {
     models: (id: string, refresh = false) => call<ModelInfo[]>('km:providers:models', id, refresh),
     test: (id: string, model: string | null) => call<ProviderTestReport>('km:providers:test', id, model)
   },
+  claude: {
+    status: () => call<{ installed: boolean; loggedIn: boolean; account: string | null; plan: string | null }>('km:claude:status'),
+    login: () => call<void>('km:claude:login')
+  },
   session: {
-    start: (mode: 'practice' | 'live' | 'meeting') => call<string>('km:session:start', mode),
+    start: (mode: 'practice' | 'live' | 'meeting', collapse = false) => call<string>('km:session:start', mode, collapse),
     resume: () => call<string | null>('km:session:resume'),
     stop: () => call<void>('km:session:stop'),
     toggleListen: () => call<void>('km:session:toggleListen'),
@@ -93,12 +112,14 @@ export const api = {
   preview: () => call<OutgoingPreview>('km:preview'),
   overlay: {
     toggle: () => call<void>('km:overlay:toggle'),
+    showMain: () => call<void>('km:dashboard:show'),
     expand: (v: boolean) => call<void>('km:overlay:expand', v),
     fit: (h: number) => call<void>('km:overlay:fit', h)
   },
   copy: (text: string) => call<void>('km:copy', text),
   screen: {
     begin: () => call<void>('km:screen:begin'),
+    solve: () => call<void>('km:screen:solve'),
     submit: (png: string, task: ScreenTask, withCode: boolean, codeLang: string) => call<void>('km:screen:submit', png, task, withCode, codeLang),
     cancel: () => call<void>('km:screen:cancel')
   },

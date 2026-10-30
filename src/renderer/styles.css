@@ -391,3 +391,12 @@ kbd {
   border: 2px solid transparent;
   background-clip: padding-box;
 }
+
+/* API keys are secrets: masked unless the field is being edited (the screen may be shared). */
+textarea.key-input:not(:focus) {
+  -webkit-text-security: disc;
+}
+textarea.key-input {
+  min-height: 0;
+  resize: vertical;
+}

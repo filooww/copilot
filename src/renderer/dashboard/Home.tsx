@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { AppSnapshot, SessionStartOptions } from '@shared/types'
-import { api } from '../lib/api'
+import { api, isMac, prettyShortcut } from '../lib/api'
 import { useAsync } from '../lib/hooks'
 import { t } from '../lib/i18n'
 import type { Ctx } from './App'
@@ -55,7 +55,7 @@ export function Home({ ctx, snap }: { ctx: Ctx; snap: AppSnapshot }) {
               </>
             ) : (
               <>
-                <button className="btn primary big" disabled={noAsr && noModel} onClick={() => void api.session.start(mode)}>
+                <button className="btn primary big" disabled={noAsr && noModel} onClick={() => void api.session.start(mode, true)}>
                   {t('Начать сессию')}
                 </button>
                 {ctx.init.resumable && (
@@ -150,6 +150,10 @@ export function Home({ ctx, snap }: { ctx: Ctx; snap: AppSnapshot }) {
             <kbd>{pretty(keys.answerNow)}</kbd>
             <span>Пауза / продолжить</span>
             <kbd>{pretty(keys.toggleListen)}</kbd>
+            <span>Решить задачу с экрана</span>
+            <kbd>{pretty(keys.solveScreen)}</kbd>
+            <span>Автоответ: вкл / выкл</span>
+            <kbd>{pretty(keys.toggleAuto)}</kbd>
             <span>Снимок области экрана</span>
             <kbd>{pretty(keys.snapRegion)}</kbd>
             <span>Развернуть / подробно</span>
@@ -189,5 +193,5 @@ export function Home({ ctx, snap }: { ctx: Ctx; snap: AppSnapshot }) {
 }
 
 export function pretty(accel: string): string {
-  return accel.replace('Control', 'Ctrl').replace(/\+/g, ' + ')
+  return isMac ? prettyShortcut(accel) : accel.replace('Control', 'Ctrl').replace(/\+/g, ' + ')
 }

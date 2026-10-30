@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AnswerEvent, AppSnapshot, ConvState, Settings } from '@shared/types'
-import { api, km } from '../lib/api'
+import { api, km, prettyShortcut } from '../lib/api'
 import { useSettingsFeed, useSnapshot } from '../lib/hooks'
 import { setLang, t } from '../lib/i18n'
 import { Markdown } from '../lib/md'
 
-const COMPACT_MIN = 120
+const COMPACT_MIN = 150
 const COMPACT_MAX = 440
 
 const STATE_LABEL: Partial<Record<ConvState, string>> = {
@@ -23,7 +23,7 @@ function provenance(a: AnswerEvent | undefined): string {
   if (!a || !a.model) return ''
   const parts = [a.model]
   if (a.firstTokenMs != null) parts.push(`${(a.firstTokenMs / 1000).toFixed(1)} с`)
-  if (a.status === 'done') parts.push(a.usageCostUsd == null ? t('Цена неизвестна') : a.usageCostUsd === 0 ? 'локально' : `$${a.usageCostUsd.toFixed(4)}`)
+  if (a.status === 'done') parts.push(a.usageCostUsd == null ? t('Цена неизвестна') : a.usageCostUsd === 0 ? (a.local ? 'локально' : 'подписка') : `$${a.usageCostUsd.toFixed(4)}`)
   return parts.join(' · ')
 }
 
@@ -95,6 +95,12 @@ export function Overlay() {
     .filter(Boolean)
     .slice(0, expanded ? 5 : 3)
 
+  const keys = settings.shortcuts
+  const more = async () => {
+    if (expanded) await api.session.answerNow('deep')
+    else await toggleExpand()
+  }
+
   const toggleExpand = async () => {
     await api.overlay.expand(!expanded)
     await api.overlay.fit(expanded ? 230 : 560)
@@ -111,19 +117,59 @@ export function Overlay() {
           </span>
         )}
         <span className="grow" />
-        <button className="ov-btn" title={t('Ответить сейчас')} onClick={() => void api.session.answerNow()}>
-          ↵
-        </button>
-        <button className="ov-btn" title={t('Следующий вопрос')} onClick={() => void api.session.next()}>
-          ⟳
+        <button className="ov-btn" title="Открыть главное окно" onClick={() => void api.overlay.showMain()}>
+          ⌂
         </button>
         <button className="ov-btn" title={expanded ? t('Свернуть') : t('Развернуть')} onClick={() => void toggleExpand()}>
           {expanded ? '▭' : '⤢'}
         </button>
-        <button className="ov-btn" title="Скрыть" onClick={() => void api.overlay.toggle()}>
+        <button className="ov-btn" title={`Скрыть (${prettyShortcut(keys.toggleOverlay)})`} onClick={() => void api.overlay.toggle()}>
           ×
         </button>
       </header>
+
+      <div className="ov-bar">
+        {snap.sessionId ? (
+          <>
+            <button className="ov-act primary" title="Ответить на последний вопрос" onClick={() => void api.session.answerNow()}>
+              Ответить <kbd>{prettyShortcut(keys.answerNow)}</kbd>
+            </button>
+            <button className="ov-act ov-more" title="Подробный ответ" disabled={!q} onClick={() => void more()}>
+              Подробнее
+            </button>
+            <button className="ov-act" title={`Снять экран и написать решение (${prettyShortcut(keys.solveScreen)})`} onClick={() => void api.screen.solve()}>
+              Решить
+            </button>
+            <button
+              className={`ov-auto ${settings.autoAnswer ? 'on' : ''}`}
+              role="switch"
+              aria-checked={settings.autoAnswer}
+              title={`Сам отвечать на распознанные вопросы (${prettyShortcut(keys.toggleAuto)})`}
+              onClick={() => void api.patchSettings({ autoAnswer: !settings.autoAnswer })}
+            >
+              <i /> Авто
+            </button>
+            <span className="grow" />
+            <button
+              className="ov-btn"
+              title={`${snap.listening ? 'Пауза' : 'Продолжить'} (${prettyShortcut(keys.toggleListen)})`}
+              onClick={() => void api.session.toggleListen()}
+            >
+              {snap.listening ? '❚❚' : '▶'}
+            </button>
+            <button className="ov-btn ov-next" title={t('Следующий вопрос')} onClick={() => void api.session.next()}>
+              ⟳
+            </button>
+            <button className="ov-btn" title="Завершить сессию" onClick={() => void api.session.stop()}>
+              ■
+            </button>
+          </>
+        ) : (
+          <button className="ov-act primary" onClick={() => void api.session.start('live', true)}>
+            ▶ Начать сессию
+          </button>
+        )}
+      </div>
 
       {expanded && (
         <nav className="ov-tabs">
@@ -182,6 +228,11 @@ export function Overlay() {
               ) : q && (a.say?.status === 'streaming' || snap.state === 'generating') ? (
                 <div className="ov-say faint">…</div>
               ) : null}
+              {say?.kind === 'screen' && say.status !== 'streaming' && codes.length > 0 && (
+                <button className="ov-link" onClick={() => void api.copy(codes[0])}>
+                  Копировать код
+                </button>
+              )}
               {points.length > 0 && (
                 <ul className="ov-points">
                   {points.map((p, i) => (
@@ -208,7 +259,8 @@ export function Overlay() {
               {snap.notice && <div className="ov-note">{snap.notice}</div>}
               {!q && !live && !snap.candidates.length && snap.sessionId && (
                 <div className="faint ov-hint">
-                  Жду вопрос. <kbd>{settings.shortcuts.answerNow.replace('Control', 'Ctrl')}</kbd> — ответить сразу.
+                  Жду вопрос. <kbd>{prettyShortcut(keys.answerNow)}</kbd> — ответить сразу, <kbd>{prettyShortcut(keys.solveScreen)}</kbd> — решить задачу с экрана.
+                  {settings.autoAnswer ? '' : ' Авто выключено: ответ только по кнопке.'}
                 </div>
               )}
               {!snap.sessionId && <div className="faint ov-hint">{t('Сессия не запущена')}</div>}

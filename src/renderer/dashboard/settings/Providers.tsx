@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ModelInfo, ModelRole, ProviderConfig, ProviderPreset } from '@shared/types'
-import { api, type PresetInfo, type ProviderTestReport } from '../../lib/api'
+import { api, isMac, type PresetInfo, type ProviderTestReport } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
 import type { Ctx } from '../App'
 import { ErrorText, Toggle } from '../ui'
@@ -11,6 +11,72 @@ const ROLE_LABEL: Record<ModelRole, string> = {
   vision: 'Снимки экрана (vision)',
   classification: 'Классификация',
   post_session_summary: 'Итог встречи'
+}
+
+type ClaudeState = Awaited<ReturnType<typeof api.claude.status>>
+
+/** Sign-in state of the official Claude Code CLI; after "Войти" I poll until the browser login lands. */
+function ClaudeLogin() {
+  const [st, setSt] = useState<ClaudeState | null>(null)
+  const [waiting, setWaiting] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const refresh = () => api.claude.status().then(setSt, (e: Error) => setErr(e.message))
+  useEffect(() => {
+    void refresh()
+  }, [])
+  useEffect(() => {
+    if (!waiting || st?.loggedIn) return
+    const t = window.setInterval(() => void refresh(), 2500)
+    const stop = window.setTimeout(() => setWaiting(false), 5 * 60_000)
+    return () => {
+      clearInterval(t)
+      clearTimeout(stop)
+    }
+  }, [waiting, st?.loggedIn])
+
+  const login = async () => {
+    setErr(null)
+    try {
+      await api.claude.login()
+      setWaiting(true)
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
+
+  return (
+    <div className="banner small col" style={{ gap: 8 }}>
+      {!st ? (
+        <span className="muted">Проверяю Claude Code…</span>
+      ) : !st.installed ? (
+        <span>
+          Нужен Claude Code. Установите в Терминале: <span className="mono">brew install --cask claude-code</span>, затем нажмите «Обновить».
+        </span>
+      ) : st.loggedIn ? (
+        <span>
+          <span className="dot ok" style={{ display: 'inline-block', marginRight: 6 }} />
+          Вход выполнен{st.account ? `: ${st.account}` : ''}
+          {st.plan ? ` (${st.plan})` : ''}. Запросы идут из вашей подписки Claude.
+        </span>
+      ) : (
+        <span>
+          <span className="dot warn" style={{ display: 'inline-block', marginRight: 6 }} />
+          {waiting ? 'Жду входа — завершите его в браузере (окно Терминала откроется само)…' : 'Не выполнен вход в Claude.'}
+        </span>
+      )}
+      <div className="row">
+        {st?.installed && !st.loggedIn && (
+          <button className="btn sm primary" onClick={() => void login()}>
+            Войти через браузер
+          </button>
+        )}
+        <button className="btn sm" onClick={() => void refresh()}>
+          Обновить
+        </button>
+      </div>
+      <ErrorText text={err} />
+    </div>
+  )
 }
 
 export function ProviderForm({
@@ -38,7 +104,8 @@ export function ProviderForm({
     setPreset(p)
     setLabel(presets[p].label)
     setBaseUrl(presets[p].baseUrl)
-    setTimeoutMs(p === 'ollama' || p === 'lmstudio' || p === 'custom' ? 30000 : 12000)
+    // The CLI-based subscription spends a few seconds just starting up, so it gets the longer wait too.
+    setTimeoutMs(p === 'ollama' || p === 'lmstudio' || p === 'custom' || p === 'claude-sub' ? 30000 : 12000)
   }
 
   const save = async () => {
@@ -67,33 +134,45 @@ export function ProviderForm({
         ))}
       </div>
       <div className="small muted">{info.note}</div>
+      {info.login === 'claude' && <ClaudeLogin />}
       <div className="grid2">
         <label className="field">
           <span>Название</span>
           <input className="input" value={label} onChange={(e) => setLabel(e.target.value)} />
         </label>
-        <label className="field">
-          <span>Адрес API</span>
-          <input className="input mono" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
-        </label>
-        <label className="field">
-          <span>
-            API-ключ {initial?.hasKey ? '(сохранён — введите новый, чтобы заменить)' : info.needsKey ? '' : '(не обязателен)'}{' '}
-            {info.keyUrl && (
-              <a href="#" onClick={() => void api.open(info.keyUrl!)}>
-                где взять
-              </a>
-            )}
-          </span>
-          <input
-            className="input mono"
-            type="password"
-            autoComplete="off"
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-            placeholder={initial?.hasKey ? '••••••••' : ''}
-          />
-        </label>
+        {!info.login && (
+          <>
+            <label className="field">
+              <span>Адрес API</span>
+              <input className="input mono" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
+            </label>
+            <label className="field">
+              <span>
+                API-ключи{' '}
+                {initial?.hasKey
+                  ? `(сохранено: ${initial.keyCount ?? 1} — введите новые, чтобы заменить весь список)`
+                  : info.needsKey
+                    ? '— по одному в строке, несколько = пул'
+                    : '(не обязательны)'}{' '}
+                {info.keyUrl && (
+                  <a href="#" onClick={() => void api.open(info.keyUrl!)}>
+                    где взять
+                  </a>
+                )}
+              </span>
+              {/* A textarea can't mask input, so I hide the keys with -webkit-text-security until the field is focused. */}
+              <textarea
+                className="input mono key-input"
+                rows={Math.min(5, Math.max(2, key.split('\n').length))}
+                autoComplete="off"
+                spellCheck={false}
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+                placeholder={initial?.hasKey ? '••••••••' : 'sk-…\nsk-…'}
+              />
+            </label>
+          </>
+        )}
         <label className="field">
           <span>Ждать первый токен, мс</span>
           <input className="input" type="number" min={2000} step={1000} value={timeoutMs} onChange={(e) => setTimeoutMs(Number(e.target.value))} />
@@ -105,7 +184,10 @@ export function ProviderForm({
         label="Разрешить как запасной"
         hint="Если основной провайдер недоступен (429/5xx/таймаут), запрос можно отправить сюда. Без этой галочки данные сюда не попадут."
       />
-      <div className="small muted">Ключ шифруется Windows (DPAPI) и не попадает в настройки, логи и экспорт.</div>
+      <div className="small muted">
+        Ключи шифруются {isMac ? 'через Связку ключей macOS' : 'Windows (DPAPI)'} и не попадают в настройки, логи и экспорт. Несколько ключей работают как пул:
+        запросы идут по очереди, а ключ, упёршийся в лимит (429), баланс или отказ, временно пропускается.
+      </div>
       <ErrorText text={err} />
       {warn && <div className="banner warn small">{warn}</div>}
       <div className="row">
@@ -184,6 +266,12 @@ export function TestResult({ r }: { r: ProviderTestReport | null }) {
           ? `ок, ${r.models.models} моделей, ${r.models.latencyMs} мс`
           : `${r.models.error.message}${r.models.error.detail ? ` — ${r.models.error.detail}` : ''}`}
       </div>
+      {r.keys?.map((k) => (
+        <div key={k.index}>
+          <span className={`dot ${k.ok ? 'ok' : 'error'}`} style={{ display: 'inline-block', marginRight: 6 }} />
+          Ключ {k.index + 1}: {k.ok ? 'работает' : k.error}
+        </div>
+      ))}
       {r.text && (
         <div>
           <span className={`dot ${r.text.ok ? 'ok' : 'error'}`} style={{ display: 'inline-block', marginRight: 6 }} />
@@ -280,7 +368,7 @@ export function ProvidersTab({ ctx }: { ctx: Ctx }) {
             </span>
             <b>{p.label}</b>
             <span className="faint mono small grow">{p.baseUrl}</span>
-            {p.hasKey && <span className="chip">ключ в DPAPI</span>}
+            {p.hasKey && <span className="chip">{(p.keyCount ?? 1) > 1 ? `пул: ${p.keyCount} ключа(ей)` : 'ключ сохранён'}</span>}
             {p.allowFallback && <span className="chip">запасной</span>}
             <button className="btn sm" onClick={() => setEditing(p)}>
               Изменить

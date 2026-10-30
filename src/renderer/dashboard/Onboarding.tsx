@@ -153,8 +153,10 @@ function StepModel({ ctx }: { ctx: Ctx }) {
   const [adding, setAdding] = useState(false)
   const [test, setTest] = useState<ProviderTestReport | null>(null)
   const [busy, setBusy] = useState(false)
+  // The provider on screen: the one just added or picked, else the one already answering.
+  const [selected, setSelected] = useState<string | null>(null)
   const quick = ctx.settings.roles.quick_answer
-  const p = providers?.find((x) => x.id === quick?.providerId) ?? providers?.[0]
+  const p = providers?.find((x) => x.id === (selected ?? quick?.providerId)) ?? providers?.[0]
 
   const choose = async (prov: ProviderConfig, model: string) => {
     await ctx.patch({
@@ -172,8 +174,10 @@ function StepModel({ ctx }: { ctx: Ctx }) {
       {(!providers?.length || adding) && (
         <ProviderForm
           presets={ctx.init.presets}
-          onSaved={() => {
+          onSaved={(saved) => {
             setAdding(false)
+            setSelected(saved.id)
+            setTest(null)
             reload()
           }}
           onCancel={providers?.length ? () => setAdding(false) : undefined}
@@ -182,7 +186,24 @@ function StepModel({ ctx }: { ctx: Ctx }) {
       {p && !adding && (
         <div className="col">
           <div className="row">
-            <b className="grow">{p.label}</b>
+            {providers && providers.length > 1 ? (
+              <select
+                className="input grow"
+                value={p.id}
+                onChange={(e) => {
+                  setSelected(e.target.value)
+                  setTest(null)
+                }}
+              >
+                {providers.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <b className="grow">{p.label}</b>
+            )}
             <button className="btn sm ghost" onClick={() => setAdding(true)}>
               Другой провайдер
             </button>
@@ -190,7 +211,7 @@ function StepModel({ ctx }: { ctx: Ctx }) {
           <ModelSelect providerId={p.id} value={quick?.providerId === p.id ? quick.model : ''} onChange={(m) => void choose(p, m)} />
           <button
             className="btn"
-            disabled={!quick?.model || busy}
+            disabled={!quick?.model || quick.providerId !== p.id || busy}
             onClick={async () => {
               setBusy(true)
               try {

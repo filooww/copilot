@@ -192,6 +192,10 @@ export class SessionManager {
     this.d.emit()
   }
 
+  get answersUser(): boolean {
+    return this.answerUserSource
+  }
+
   setLevel(source: Source, rms: number): void {
     this.snap.levels[source] = rms
   }
@@ -270,7 +274,7 @@ export class SessionManager {
 
   async screen(image: ChatImage | null, ocrText: string | null, task: ScreenTask, withCode: boolean, codeLang: string): Promise<void> {
     if (!this.coord) this.start({ mode: 'practice' })
-    const labels: Record<ScreenTask, string> = { explain: 'Объясни условие', approach: 'Предложи подход', review: 'Разбери код' }
+    const labels: Record<ScreenTask, string> = { explain: 'Объясни условие', approach: 'Предложи подход', review: 'Разбери код', solve: 'Реши задачу' }
     const decision = this.coord!.manual('manual', `[Экран] ${labels[task]}`)
     if (decision.type !== 'new') return
     this.applyQuestion(decision.question)
@@ -416,7 +420,8 @@ export class SessionManager {
       return
     }
     if (!initial.isLocal && !s.consent.cloud) {
-      this.finish({ ...base, status: 'blocked', error: appError('unsupported', CLOUD_DENIED) }, publish)
+      // The generic 'unsupported' label blamed the model; the reason is the missing consent.
+      this.finish({ ...base, status: 'blocked', error: { ...appError('unsupported', CLOUD_DENIED), message: 'Отправка в облако выключена' } }, publish)
       onFirstToken?.()
       return
     }
@@ -470,7 +475,7 @@ export class SessionManager {
       this.d.budget.begin()
       this.inflight.set(answerId, { ctrl, questionId: q.questionId, revision: q.revision, kind, release: () => void release(null) })
       let text = ''
-      let ev: AnswerEvent = { ...base, provider: target.cfg.id, model: target.model }
+      let ev: AnswerEvent = { ...base, provider: target.cfg.id, model: target.model, local: target.isLocal }
       publish(ev)
       try {
         const res = await runStream(

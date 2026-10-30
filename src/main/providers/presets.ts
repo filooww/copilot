@@ -6,10 +6,20 @@ export interface PresetInfo {
   baseUrl: string
   needsKey: boolean
   keyUrl?: string
+  /** Signs in through an official CLI in the browser instead of an API key. */
+  login?: 'claude'
   note: string
 }
 
 export const PRESETS: Record<ProviderPreset, PresetInfo> = {
+  'claude-sub': {
+    label: 'Claude по подписке',
+    protocol: 'claude-cli',
+    baseUrl: 'https://claude.ai',
+    needsKey: false,
+    login: 'claude',
+    note: 'Ваш аккаунт Claude Pro/Max через официальный Claude Code — без API-ключа, расход из подписки. Ответ стартует за 3–10 с.'
+  },
   openai: {
     label: 'OpenAI',
     protocol: 'openai',

@@ -1,7 +1,7 @@
 import type { AsrStatus, Lang, Source, TranscriptSegment } from '@shared/types'
 import type { FetchFn } from '../providers/adapter'
 import { AsrAssets, MODELS, type AsrBackend } from './assets'
-import type { SileroGate } from './silero'
+import { levelForGate, type SileroGate } from './silero'
 import { applyVocabulary, isHallucination, stripTags, WhisperSidecar } from './whisper'
 
 // Silero needs at least this much detected speech in a clip; below it the clip is music/noise/silence and never reaches whisper.
@@ -159,10 +159,10 @@ export class AsrManager {
         }
         // Silero speech gate: drop music/noise/silence before whisper so it can't hallucinate on them.
         if (this.silero) {
-          const speechS = await this.silero.speechSeconds(job.pcm)
+          const speechS = await this.silero.speechSeconds(levelForGate(job.pcm))
           if (speechS >= 0 && speechS < MIN_SPEECH_S) {
             if (job.final) {
-              this.ev.log('asr_nonspeech', { audioMs: Math.round(job.pcm.length / 16), speechMs: Math.round(speechS * 1000) })
+              this.ev.log('asr_nonspeech', { source: job.source, audioMs: Math.round(job.pcm.length / 16), speechMs: Math.round(speechS * 1000) })
               this.emit(job, '', null)
             }
             continue

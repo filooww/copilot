@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import type { AppSnapshot, AsrStatus, DiagReport, ShortcutAction } from '@shared/types'
-import { api } from '../../lib/api'
+import { CODE_LANGS, type AppSnapshot, type AsrStatus, type DiagReport, type ShortcutAction } from '@shared/types'
+import { api, isMac } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
 import type { Ctx } from '../App'
 import { pretty } from '../Home'
@@ -54,6 +54,14 @@ function OverlayTab({ ctx, snap }: { ctx: Ctx; snap: AppSnapshot }) {
         }
       >
         <div className="grid2">
+          <label className="field">
+            <span>Язык решения задач с экрана</span>
+            <select className="input" value={ctx.settings.codeLang} onChange={(e) => void ctx.patch({ codeLang: e.target.value })}>
+              {CODE_LANGS.map((l) => (
+                <option key={l}>{l}</option>
+              ))}
+            </select>
+          </label>
           <label className="field">
             <span>Непрозрачность фона: {Math.round(o.opacity * 100)}%</span>
             <input
@@ -113,8 +121,17 @@ function OverlayTab({ ctx, snap }: { ctx: Ctx; snap: AppSnapshot }) {
           hint={`Статус: ${snap.status.protection.label}`}
         />
         <div className="banner small">
-          Это системный флаг Windows (SetWindowDisplayAffinity, WDA_EXCLUDEFROMCAPTURE). Он <b>не гарантирует</b> невидимость: разные программы захватывают
-          экран по-разному, и мы не обходим средства контроля. Режим тренировки работает полноценно без него.
+          {isMac ? (
+            <>
+              На Mac это флаг окна NSWindowSharingNone. Программы на ScreenCaptureKit его <b>игнорируют</b> и окно увидят. Надёжный способ — показывать в
+              демонстрации отдельное окно или другой монитор, а не весь экран.
+            </>
+          ) : (
+            <>
+              Это системный флаг Windows (SetWindowDisplayAffinity, WDA_EXCLUDEFROMCAPTURE). Он <b>не гарантирует</b> невидимость: разные программы захватывают
+              экран по-разному, и мы не обходим средства контроля. Режим тренировки работает полноценно без него.
+            </>
+          )}
         </div>
         <div className="col small">
           <b>Как проверить у себя (2 минуты):</b>
@@ -139,6 +156,12 @@ function OverlayTab({ ctx, snap }: { ctx: Ctx; snap: AppSnapshot }) {
 
       <Section title="Окно и трей">
         <Toggle
+          on={ctx.settings.window.collapseOnSession}
+          onChange={(v) => void ctx.patch({ window: { collapseOnSession: v } })}
+          label="Сворачивать главное окно при старте сессии"
+          hint="Работаете в окне подсказок: там есть все кнопки. Главное окно вернётся по кнопке ⌂ или после завершения сессии. Захват звука продолжается."
+        />
+        <Toggle
           on={ctx.settings.window.minimizeToTray}
           onChange={(v) => void ctx.patch({ window: { minimizeToTray: v } })}
           label="Сворачивать в трей при закрытии и сворачивании"
@@ -159,7 +182,9 @@ const SHORTCUT_LABEL: Record<ShortcutAction, string> = {
   toggleOverlay: 'Показать / скрыть подсказки',
   toggleListen: 'Пауза / продолжить (или начать сессию)',
   answerNow: 'Ответить сейчас',
+  toggleAuto: 'Автоответ: вкл / выкл',
   snapRegion: 'Снимок области экрана',
+  solveScreen: 'Решить задачу с экрана',
   scrollUp: 'Прокрутить подсказки вверх',
   scrollDown: 'Прокрутить подсказки вниз',
   expand: 'Развернуть / подробный ответ',
@@ -170,6 +195,8 @@ function toAccelerator(e: React.KeyboardEvent): string | null {
   const mods = [e.ctrlKey && 'Control', e.altKey && 'Alt', e.shiftKey && 'Shift', e.metaKey && 'Super'].filter(Boolean) as string[]
   const k = e.key
   if (['Control', 'Alt', 'Shift', 'Meta'].includes(k)) return null
+  // Option turns e.key into "å" on a Mac and the layout into Cyrillic here, so letters and digits come from the physical key.
+  const physical = /^(?:Key|Digit)(.)$/.exec(e.code)?.[1]
   const map: Record<string, string> = {
     ' ': 'Space',
     ArrowUp: 'Up',
@@ -180,7 +207,7 @@ function toAccelerator(e: React.KeyboardEvent): string | null {
     Backspace: 'Backspace',
     Escape: 'Escape'
   }
-  const key = map[k] ?? (k.length === 1 ? k.toUpperCase() : k)
+  const key = physical ?? map[k] ?? (k.length === 1 ? k.toUpperCase() : k)
   if (!mods.length && !/^F\d+$/.test(key)) return null
   return [...mods, key].join('+')
 }
@@ -264,8 +291,9 @@ function PrivacyTab({ ctx }: { ctx: Ctx }) {
       </Section>
       <Section title="Данные">
         <div className="small">
-          История, транскрипты и индексы документов лежат в SQLite в <span className="mono">%APPDATA%\copilot</span>. Ключи — в отдельном файле, зашифрованном
-          Windows (DPAPI). Сырое аудио не сохраняется.
+          История, транскрипты и индексы документов лежат в SQLite в{' '}
+          <span className="mono">{isMac ? '~/Library/Application Support/copilot' : '%APPDATA%\\copilot'}</span>. Ключи — в отдельном файле, зашифрованном{' '}
+          {isMac ? 'ключом из Связки ключей macOS' : 'Windows (DPAPI)'}. Сырое аудио не сохраняется.
         </div>
         <div className="small muted">
           Важно: то, что приложение не шлёт данные своим серверам, не значит, что данные не уходят провайдеру модели. Облачный провайдер получает текст вопроса

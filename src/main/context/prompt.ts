@@ -1,7 +1,7 @@
 import type { AnswerKind, ChatImage, ChatMessage, Lang, Profile, ScreenTask, TranscriptSegment } from '@shared/types'
 import type { Chunk } from './retrieval'
 
-export const PROMPT_VERSION = 'km-2026-10-28.1'
+export const PROMPT_VERSION = 'km-2026-10-30.1'
 
 export interface PromptInput {
   question: string
@@ -56,7 +56,7 @@ const FORMAT: Record<Exclude<AnswerKind, 'screen'>, string> = {
   deep: 'Write a thorough answer: core idea, a concrete example, trade-offs and pitfalls. Use short markdown headings and bullets, at most ~350 words. End with 2–3 likely follow-up questions, each with a one-line answer.'
 }
 
-const SCREEN_FORMAT: Record<ScreenTask, string> = {
+const SCREEN_FORMAT: Record<Exclude<ScreenTask, 'solve'>, string> = {
   explain: 'Explain the problem shown: restate it in plain words, list inputs/outputs and constraints, and clarify ambiguous points.',
   approach: 'Propose a solution: problem restatement, constraints, solution idea, time and space complexity, edge cases, and a few test cases.',
   review: 'Review the code shown: what it does, bugs, complexity, edge cases, and concrete improvements.'
@@ -147,6 +147,14 @@ export function buildPrompt(p: PromptInput): BuiltPrompt {
 }
 
 function screenFormat(s: NonNullable<PromptInput['screen']>): string {
+  if (s.task === 'solve') {
+    return [
+      'The capture may show a coding task, possibly with someone\'s attempt at it. If no coding task is visible, say so in one line and write no code.',
+      `Otherwise, under short markdown headings: the task in one or two lines; the key idea; a correct reference solution in one fenced block, in the language the task requires or the attempt uses, else ${s.codeLang}; time and space complexity; edge cases.`,
+      'Only if an attempt is visible, also say whether it works, name each bug with its line, and how it differs from the reference; otherwise do not mention attempts at all.',
+      'End with 2–3 follow-up questions that check the author really understands the solution.'
+    ].join(' ')
+  }
   const code = s.withCode
     ? ` Finish with complete, idiomatic ${s.codeLang} code in one fenced block.`
     : ' Do not write full code — algorithm and reasoning only.'

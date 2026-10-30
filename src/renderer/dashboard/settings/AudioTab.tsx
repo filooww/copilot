@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { AsrStatus, Lang, Source } from '@shared/types'
-import { api } from '../../lib/api'
+import { api, isMac } from '../../lib/api'
 import { probeLevel } from '../../lib/audio'
 import type { Ctx } from '../App'
 import { ErrorText, Meter, Toggle } from '../ui'
 
-const ASR_OPTIONS = [
+const WIN_ASR_OPTIONS = [
   { backend: 'cpu' as const, model: 'base', title: 'Быстрый (процессор)', size: '≈160 МБ', note: '≈1 с на фразу на CPU. Подходит всем.' },
   { backend: 'cpu' as const, model: 'small', title: 'Точнее (процессор)', size: '≈500 МБ', note: '≈2 с на фразу — медленнее, но лучше на акцентах.' },
   {
@@ -16,6 +16,21 @@ const ASR_OPTIONS = [
     note: '≈0.1 с на фразу и лучшая точность. Первый запуск прогревается до 30 с.'
   }
 ]
+
+// On macOS whisper.cpp comes from Homebrew and runs on Metal, so the large model needs no NVIDIA card.
+const MAC_ASR_OPTIONS = [
+  { backend: 'cpu' as const, model: 'base', title: 'Быстрый', size: '≈160 МБ', note: 'Движок whisper.cpp ставится через Homebrew. Подходит любому Mac.' },
+  { backend: 'cpu' as const, model: 'small', title: 'Точнее', size: '≈500 МБ', note: 'Лучше на акцентах, чуть медленнее.' },
+  {
+    backend: 'cpu' as const,
+    model: 'turbo',
+    title: 'Максимум (Apple Silicon)',
+    size: '≈600 МБ',
+    note: 'Лучшая точность, считается на GPU через Metal. Первый запуск прогревается.'
+  }
+]
+
+const ASR_OPTIONS = isMac ? MAC_ASR_OPTIONS : WIN_ASR_OPTIONS
 
 // A fixed language is ~1.5× faster on CPU (spike S2, audit 2026-10-28) and never turns speech into a translation.
 export const ASR_LANG_OPTIONS = (
@@ -32,7 +47,7 @@ export function AsrInstaller({ ctx, asr, compact }: { ctx: Ctx; asr: AsrStatus |
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   useEffect(() => {
-    void api.hasNvidia().then(setNvidia)
+    if (!isMac) void api.hasNvidia().then(setNvidia)
   }, [])
   const cur = ctx.settings.asr
   const dl = asr?.download
@@ -102,7 +117,7 @@ function Probe({ source, deviceId }: { source: Source; deviceId: string | null }
           : max > 0.004
             ? 'Очень тихо — проверьте громкость.'
             : source === 'user'
-              ? 'Тишина. Проверьте выбранный микрофон и его громкость в Windows.'
+              ? `Тишина. Проверьте выбранный микрофон и его громкость в ${isMac ? 'Системных настройках → Звук' : 'Windows'}.`
               : 'Тишина. Включите звук в звонке/видео во время проверки.'
       )
     } catch (e) {
@@ -165,7 +180,11 @@ export function DeviceSettings({ ctx }: { ctx: Ctx }) {
           on={a.captureSystem}
           onChange={(v) => void ctx.patch({ audio: { captureSystem: v } })}
           label="Звук собеседника (системный звук)"
-          hint="WASAPI loopback: весь звук, который играет Windows. Захват отдельного приложения пока не поддерживается."
+          hint={
+            isMac
+              ? 'Весь звук, который играет Mac (ScreenCaptureKit). Нужно разрешение «Запись экрана и системного звука» в Системных настройках → Конфиденциальность.'
+              : 'WASAPI loopback: весь звук, который играет Windows. Захват отдельного приложения пока не поддерживается.'
+          }
         />
         <div className="small muted">Совет: наушники убирают эхо собеседника в микрофоне.</div>
         <Probe source="remote" deviceId={null} />

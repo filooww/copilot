@@ -8,6 +8,18 @@ const CONTEXT = 64
 
 type Ort = typeof import('onnxruntime-node')
 
+const GATE_PEAK = 0.3 * 32768
+const MAX_GATE_GAIN = 40
+
+/** Silero scores quiet voices low, so I level the clip for the gate only. Measured: noise and clicks still score nothing at this gain. */
+export function levelForGate(pcm: Int16Array): Int16Array {
+  let peak = 1
+  for (const v of pcm) peak = Math.max(peak, Math.abs(v))
+  const gain = Math.min(MAX_GATE_GAIN, GATE_PEAK / peak)
+  if (gain <= 1) return pcm
+  return Int16Array.from(pcm, (v) => v * gain)
+}
+
 /**
  * Silero VAD speech gate. I run it before whisper so music/silence/noise never reaches the model —
  * that is where "[музыка]" and the phantom prompt words came from. It loads lazily and, if the model

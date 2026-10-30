@@ -46,7 +46,9 @@ export interface QuestionEvent {
 }
 
 export type AnswerKind = 'say' | 'points' | 'deep' | 'screen'
-export type ScreenTask = 'explain' | 'approach' | 'review'
+export type ScreenTask = 'explain' | 'approach' | 'review' | 'solve'
+
+export const CODE_LANGS = ['Python', 'TypeScript', 'JavaScript', 'Java', 'Go', 'C#', 'C++', 'Kotlin', 'SQL']
 export type AnswerStatus = 'streaming' | 'done' | 'cancelled' | 'error' | 'stale' | 'blocked'
 
 export interface Usage {
@@ -70,6 +72,8 @@ export interface AnswerEvent {
   latencyMs: number | null
   usage: Usage | null
   usageCostUsd: number | null
+  /** Answered on this computer. A zero cost alone doesn't say so: a subscription is free per request too, but goes to the cloud. */
+  local?: boolean
   error: AppError | null
 }
 
@@ -99,8 +103,8 @@ export interface AppError {
   retryAfterMs?: number
 }
 
-export type ProviderProtocol = 'openai' | 'anthropic' | 'gemini'
-export type ProviderPreset = 'openai' | 'anthropic' | 'gemini' | 'anymodel' | 'ollama' | 'lmstudio' | 'custom'
+export type ProviderProtocol = 'openai' | 'anthropic' | 'gemini' | 'claude-cli'
+export type ProviderPreset = 'claude-sub' | 'openai' | 'anthropic' | 'gemini' | 'anymodel' | 'ollama' | 'lmstudio' | 'custom'
 
 export interface ProviderConfig {
   id: string
@@ -109,6 +113,8 @@ export interface ProviderConfig {
   protocol: ProviderProtocol
   baseUrl: string
   hasKey: boolean
+  /** Number of API keys in the pool; filled by the registry, never stored. */
+  keyCount?: number
   allowFallback: boolean
   timeoutMs: number
 }
@@ -174,7 +180,7 @@ export interface KnowledgeDoc {
   createdAt: number
 }
 
-export type ShortcutAction = 'toggleOverlay' | 'toggleListen' | 'answerNow' | 'snapRegion' | 'scrollUp' | 'scrollDown' | 'expand' | 'panic'
+export type ShortcutAction = 'toggleOverlay' | 'toggleListen' | 'answerNow' | 'toggleAuto' | 'snapRegion' | 'solveScreen' | 'scrollUp' | 'scrollDown' | 'expand' | 'panic'
 
 export interface OverlaySettings {
   bounds: { x: number; y: number; width: number; height: number } | null
@@ -208,6 +214,8 @@ export interface Settings {
   contextWindowMin: number
   overlay: OverlaySettings
   shortcuts: Record<ShortcutAction, string>
+  /** Language for a screen solution when the task and the screen don't dictate one. */
+  codeLang: string
   history: boolean
   budget: BudgetLimits
   pricing: Record<string, ModelPrice>
@@ -220,6 +228,8 @@ export interface Settings {
 export interface WindowSettings {
   /** Close/minimize hides the main window to the tray instead of quitting; the session keeps running. */
   minimizeToTray: boolean
+  /** Hide the main window while a session runs: the overlay becomes the working window. */
+  collapseOnSession: boolean
   /** Apply WDA_EXCLUDEFROMCAPTURE to the main window and region picker too, so a shared screen does not reveal them. */
   protectFromCapture: boolean
   /** Emergency stop fully quits the app (process gone) instead of only stopping capture and hiding the overlay. */

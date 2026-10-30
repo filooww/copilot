@@ -3,17 +3,18 @@ import { km } from './api'
 
 const RATE = 16000
 const FRAME = 320 // 20 ms
+const FRAMES_PER_POST = 5 // A renderer wake-up per 100 ms instead of 20; the detector still sees every 20 ms frame.
 
 // I inline the worklet and load it from a Blob to keep the build single-file and CSP-checked.
 const WORKLET = `
 class Pcm extends AudioWorkletProcessor {
-  constructor() { super(); this.buf = new Float32Array(${FRAME}); this.n = 0 }
+  constructor() { super(); this.buf = new Float32Array(${FRAME * FRAMES_PER_POST}); this.n = 0 }
   process(inputs) {
     const ch = inputs[0] && inputs[0][0]
     if (!ch) return true
     for (let i = 0; i < ch.length; i++) {
       this.buf[this.n++] = ch[i]
-      if (this.n === ${FRAME}) { this.port.postMessage(this.buf.slice(0)); this.n = 0 }
+      if (this.n === ${FRAME * FRAMES_PER_POST}) { this.port.postMessage(this.buf.slice(0)); this.n = 0 }
     }
     return true
   }
@@ -32,12 +33,14 @@ export interface VadConfig {
 }
 
 const VAD: VadConfig = {
-  startFrames: 3,
+  startFrames: 2,
   hangoverFrames: 35,
   prerollFrames: 15,
   maxFrames: 1000,
-  partialEveryFrames: 50,
-  minSpeechFrames: 15
+  // Every 2 s: a partial holds the GPU for about a second, and a final that arrives meanwhile has to wait for it.
+  partialEveryFrames: 100,
+  // 120 ms: "да" and "нет" barely reach 300 ms. Noise that slips through is Silero's job, right after this.
+  minSpeechFrames: 6
 }
 
 export interface Utterance {
@@ -58,6 +61,7 @@ export class Vad {
   private sinceStart = 0
   private startAt = 0
   private id = ''
+  private peak = 0
 
   constructor(
     private onPartial: (u: Utterance) => void,
@@ -70,8 +74,10 @@ export class Vad {
     for (let i = 0; i < frame.length; i++) sum += frame[i] * frame[i]
     const rms = Math.sqrt(sum / frame.length)
     if (!this.active) this.noise = rms < this.noise ? this.noise * 0.9 + rms * 0.1 : this.noise * 0.998 + rms * 0.002
-    const startThr = Math.max(0.008, this.noise * 3)
-    const keepThr = Math.max(0.005, this.noise * 2)
+    // Low floors on purpose: a quiet remote voice peaks near 0.005 here, and a missed word can't be recovered later, while a false start only costs a Silero pass.
+    const startThr = Math.max(0.002, this.noise * 3)
+    // Relative to the voice too: room hum above the floor would otherwise hold a phrase open up to the 20 s limit.
+    const keepThr = Math.max(0.0012, this.noise * 2, this.peak * 0.08)
     if (!this.active) {
       this.preroll.push(frame)
       if (this.preroll.length > this.cfg.prerollFrames) this.preroll.shift()
@@ -83,6 +89,7 @@ export class Vad {
         this.speech = this.run
         this.silence = 0
         this.sinceStart = 0
+        this.peak = rms
         this.startAt = now - this.frames.length * 20
         this.id = crypto.randomUUID()
       }
@@ -90,6 +97,7 @@ export class Vad {
     }
     this.frames.push(frame)
     this.sinceStart++
+    this.peak = Math.max(this.peak, rms)
     if (rms > keepThr) {
       this.speech++
       this.silence = 0
@@ -197,8 +205,10 @@ export class CaptureController {
       )
       const ch: Channel = { stream, ctx, node, vad, level: 0, levelTimer: 0 }
       node.port.onmessage = (e: MessageEvent<Float32Array>) => {
-        const rms = vad.push(e.data, Date.now())
-        ch.level = Math.max(ch.level * 0.85, rms)
+        for (let i = 0; i < e.data.length; i += FRAME) {
+          const rms = vad.push(e.data.subarray(i, i + FRAME), Date.now())
+          ch.level = Math.max(ch.level * 0.85, rms)
+        }
       }
       ch.levelTimer = window.setInterval(() => km.sendLevel({ source, rms: ch.level }), 100)
       for (const t of stream.getAudioTracks()) t.addEventListener('ended', () => void this.reopen(source, 'устройство отключено'))
@@ -206,7 +216,7 @@ export class CaptureController {
       this.restarts[source] = 0 // only consecutive failures should count toward the reopen cap
       if (source === 'remote') this.outputSig = outputSignature(await navigator.mediaDevices.enumerateDevices())
       const label = stream.getAudioTracks()[0]?.label || (source === 'user' ? 'микрофон' : 'системный звук')
-      km.sendAudioStatus({ source, state: 'ok', label: source === 'remote' ? 'весь звук Windows (loopback)' : label })
+      km.sendAudioStatus({ source, state: 'ok', label: source === 'remote' ? 'весь системный звук (loopback)' : label })
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       km.sendAudioStatus({
@@ -280,7 +290,10 @@ async function openMic(deviceId: string | null): Promise<MediaStream> {
 }
 
 async function openLoopback(): Promise<MediaStream> {
-  const s = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true })
+  const s = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true }).catch((e: unknown) => {
+    if (km.platform !== 'darwin') throw e
+    throw new Error('нет разрешения. Системные настройки → Конфиденциальность → «Запись экрана и системного звука» → включите Copilot и перезапустите его')
+  })
   for (const v of s.getVideoTracks()) {
     v.stop()
     s.removeTrack(v)

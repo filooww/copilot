@@ -30,7 +30,8 @@ export function appError(code: ErrorCode, detail?: string, status?: number): App
 export function fromHttp(status: number, body: string, headers?: Headers | null): ProviderError {
   const lower = body.toLowerCase()
   let code: ErrorCode
-  if (status === 401 || status === 403) code = 'auth'
+  // Gemini answers a bad key with 400 INVALID_ARGUMENT, so I look at the body too; otherwise a key pool would never skip it.
+  if (status === 401 || status === 403 || /api_key_invalid|api key not valid|invalid api key|incorrect api key|api key expired/.test(lower)) code = 'auth'
   else if (status === 402 || /insufficient_quota|credit balance|billing|quota exceeded/.test(lower)) code = 'quota'
   else if (status === 429) code = 'rate_limit'
   else if (status === 404) code = 'not_found'

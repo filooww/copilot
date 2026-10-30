@@ -14,7 +14,13 @@ function Prov({ a }: { a?: AnswerEvent }) {
       {a.provider} · {a.model}
       {a.firstTokenMs != null && ` · первый токен ${(a.firstTokenMs / 1000).toFixed(1)} с`}
       {a.status === 'done' &&
-        (a.usageCostUsd == null ? ` · ${t('Цена неизвестна')}` : a.usageCostUsd === 0 ? ' · локально, бесплатно' : ` · $${a.usageCostUsd.toFixed(4)}`)}
+        (a.usageCostUsd == null
+          ? ` · ${t('Цена неизвестна')}`
+          : a.usageCostUsd === 0
+            ? a.local
+              ? ' · локально, бесплатно'
+              : ' · по подписке'
+            : ` · $${a.usageCostUsd.toFixed(4)}`)}
       {a.usage && !a.usage.exact && ' · токены оценочно'}
     </div>
   )
@@ -71,10 +77,10 @@ export function Live({ ctx, snap }: { ctx: Ctx; snap: AppSnapshot }) {
         ) : (
           <>
             <span className="muted">{t('Сессия не запущена')}.</span>
-            <button className="btn primary" onClick={() => void api.session.start('practice')}>
+            <button className="btn primary" onClick={() => void api.session.start('practice', true)}>
               {t('Тренировка')}
             </button>
-            <button className="btn" onClick={() => void api.session.start('live')}>
+            <button className="btn" onClick={() => void api.session.start('live', true)}>
               {t('Интервью / звонок')}
             </button>
           </>
