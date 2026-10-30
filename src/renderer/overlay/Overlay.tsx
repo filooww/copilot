@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AnswerEvent, AppSnapshot, ConvState, Settings } from '@shared/types'
-import { api, km, prettyShortcut } from '../lib/api'
+import { api, isMac, km, prettyShortcut } from '../lib/api'
 import { useSettingsFeed, useSnapshot } from '../lib/hooks'
 import { setLang, t } from '../lib/i18n'
 import { Markdown } from '../lib/md'
@@ -109,7 +109,26 @@ export function Overlay() {
 
   return (
     <div className={`ov ${expanded ? 'expanded' : ''}`}>
-      <header className="ov-head">
+      <header className={`ov-head ${isMac ? 'mac' : ''}`}>
+        {isMac && (
+          <div className="ov-lights">
+            <button className="ov-light close" title={`Скрыть (${prettyShortcut(keys.toggleOverlay)})`} aria-label="Скрыть" onClick={() => void api.overlay.toggle()}>
+              <svg viewBox="0 0 12 12" aria-hidden="true">
+                <path d="M3.6 3.6l4.8 4.8M8.4 3.6L3.6 8.4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+              </svg>
+            </button>
+            <button className="ov-light min" title={t('Свернуть')} aria-label={t('Свернуть')} disabled={!expanded} onClick={() => void toggleExpand()}>
+              <svg viewBox="0 0 12 12" aria-hidden="true">
+                <path d="M3 6h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            </button>
+            <button className="ov-light zoom" title={t('Развернуть')} aria-label={t('Развернуть')} disabled={expanded} onClick={() => void toggleExpand()}>
+              <svg viewBox="0 0 12 12" aria-hidden="true">
+                <path d="M3.4 8.6V4.6l4 4zM8.6 3.4v4l-4-4z" fill="currentColor" />
+              </svg>
+            </button>
+          </div>
+        )}
         <span className={`dot ${snap.listening ? (snap.state === 'generating' ? 'busy' : 'ok') : snap.sessionId ? 'warn' : ''}`} />
         <span className="ov-state">{t(STATE_LABEL[snap.state] ?? (q ? 'Вопрос' : 'Слушаю…'))}</span>
         {snap.status.protection.state === 'ok' && (
@@ -118,15 +137,25 @@ export function Overlay() {
           </span>
         )}
         <span className="grow" />
-        <button className="ov-btn" title="Открыть главное окно" onClick={() => void api.overlay.showMain()}>
-          ⌂
+        <button className="ov-btn" title="Открыть главное окно" aria-label="Открыть главное окно" onClick={() => void api.overlay.showMain()}>
+          {isMac ? (
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M2 6.6L7 2.4l5 4.2M3.6 5.6v6h6.8v-6" />
+            </svg>
+          ) : (
+            '⌂'
+          )}
         </button>
-        <button className="ov-btn" title={expanded ? t('Свернуть') : t('Развернуть')} onClick={() => void toggleExpand()}>
-          {expanded ? '▭' : '⤢'}
-        </button>
-        <button className="ov-btn" title={`Скрыть (${prettyShortcut(keys.toggleOverlay)})`} onClick={() => void api.overlay.toggle()}>
-          ×
-        </button>
+        {!isMac && (
+          <>
+            <button className="ov-btn" title={expanded ? t('Свернуть') : t('Развернуть')} onClick={() => void toggleExpand()}>
+              {expanded ? '▭' : '⤢'}
+            </button>
+            <button className="ov-btn" title={`Скрыть (${prettyShortcut(keys.toggleOverlay)})`} onClick={() => void api.overlay.toggle()}>
+              ×
+            </button>
+          </>
+        )}
       </header>
 
       <div className="ov-bar">

@@ -56,6 +56,55 @@ body {
   background: var(--surface-3);
   color: var(--text);
 }
+.ov-btn svg {
+  display: block;
+  margin: auto;
+}
+
+/* The window never becomes key, so the lights stay coloured instead of greying out like an inactive macOS window. */
+.ov-head.mac {
+  padding-left: 10px;
+}
+.ov-lights {
+  display: flex;
+  gap: 8px;
+  margin-right: 4px;
+}
+.ov-light {
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 0.5px solid rgb(0 0 0 / 0.14);
+  border-radius: 50%;
+  cursor: default;
+}
+.ov-light svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+}
+.ov-lights:hover .ov-light:not(:disabled) svg {
+  opacity: 1;
+}
+.ov-light:active:not(:disabled) {
+  filter: brightness(0.82);
+}
+.ov-light.close {
+  background: #ff5f57;
+  color: #4d0000;
+}
+.ov-light.min {
+  background: #febc2e;
+  color: #995700;
+}
+.ov-light.zoom {
+  background: #28c840;
+  color: #006500;
+}
+.ov-light:disabled {
+  background: var(--surface-3);
+}
 
 .ov-bar {
   display: flex;
