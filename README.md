@@ -1,49 +1,53 @@
-# Copilot для macOS
+# Copilot for macOS
 
-Подсказки на собеседовании и встрече. Приложение слушает разговор, распознаёт речь прямо на компьютере, замечает вопросы и показывает короткий ответ в небольшом окне поверх остальных.
+Live hints for interviews and meetings. The app listens to the conversation, transcribes speech on your Mac, spots questions, and shows a short answer in a small always-on-top window.
 
-Это форк [Magerko/copilot](https://github.com/Magerko/copilot), написанного для Windows. Здесь он перенесён на Mac с Apple Silicon и дополнен. Сборка под Windows осталась, но в этом форке на Windows не проверялась.
+This is a fork of [Magerko/copilot](https://github.com/Magerko/copilot), which was built for Windows. This fork ports it to Apple Silicon Macs and adds new features. The Windows build is still in the code, but it has not been tested in this fork.
 
-## Что умеет
-- **Распознавание речи на компьютере.** whisper.cpp работает локально на Metal: аудио не уходит в сеть и не пишется на диск.
-- **Ответы от выбранной модели:** локальной (Ollama, LM Studio), облачной по ключу (OpenAI, Anthropic, Gemini, любой OpenAI-совместимый сервис) или Claude по вашей подписке.
-- **Опора на ваши документы.** Загрузите резюме и описание вакансии. Чего в них нет, то помечается `[нет в резюме]`, а не выдумывается.
-- **Решение задачи с экрана.** Одна клавиша снимает экран, модель пишет решение и разбирает видимый код, если он есть. Можно снять и только выделенную область.
-- **Работа из маленького окна.** Кнопки ответа, тумблер автоответа и пауза под рукой, главное окно на время сессии сворачивается.
-- **Учёт расходов** по платным моделям, лимиты и офлайн-режим, который блокирует внешние запросы.
+The interface is mostly in Russian. Choosing English in the settings translates only part of it. Questions and answers can be in Russian, Ukrainian, or English.
 
-## Что добавлено к оригиналу
-- Порт на macOS: сборка под Apple Silicon, подпись, whisper.cpp из Homebrew, системный звук через ScreenCaptureKit.
-- Claude по подписке через официальный Claude Code CLI, без API-ключа.
-- Пул API-ключей: при лимите запрос сразу уходит на следующий ключ.
-- Решение задач с экрана одной клавишей.
-- Кнопки и автоответ в окне подсказок, сворачивание главного окна.
-- Лучше ловит тихую и короткую речь, меньше нагружает процессор и видеокарту.
-- Горячие клавиши на цифрах: нажимаются одной рукой и не зависят от раскладки.
+## Features
+- **On-device speech recognition.** whisper.cpp runs locally on Metal. Audio never leaves your Mac and is never written to disk.
+- **Your choice of model:** local (Ollama, LM Studio), cloud with an API key (OpenAI, Anthropic, Gemini, any OpenAI-compatible service), or Claude with your subscription.
+- **Answers based on your documents.** Upload your resume and the job description. Anything missing from them is marked instead of being made up.
+- **Solve a task from your screen.** One key captures the screen, then the model writes a solution and reviews any code it can see. You can also capture just a selected area.
+- **Work from the small window.** Answer buttons, the auto-answer switch, and pause are all there, and the main window collapses during a session.
+- **Usage tracking** for paid models, spending limits, and an offline mode that blocks external requests.
 
-## Скриншоты
-Данные на снимках вымышленные.
+## What this fork adds
+- macOS port: Apple Silicon build, code signing, whisper.cpp from Homebrew, system audio through ScreenCaptureKit.
+- Claude with your subscription through the official Claude Code CLI, no API key needed.
+- API key pool: when one key hits a limit, the request moves to the next key right away.
+- One-key solving of tasks from the screen.
+- Buttons and auto-answer in the hint window, plus a collapsing main window.
+- Better pickup of quiet and short speech, with less CPU and GPU load.
+- Number-based hotkeys that work with one hand on any keyboard layout.
 
-![Главный экран](docs/screenshots/dashboard.png)
+## Screenshots
+The data in these screenshots is fictional.
 
-![Сессия](docs/screenshots/session.png)
+![Home screen](docs/screenshots/dashboard.png)
 
-| Окно подсказок | Решение задачи с экрана |
+![Session](docs/screenshots/session.png)
+
+| Hint window | Solving a task from the screen |
 |---|---|
-| ![Окно подсказок](docs/screenshots/overlay-answer.png) | ![Решение задачи](docs/screenshots/overlay-solve.png) |
+| ![Hint window](docs/screenshots/overlay-answer.png) | ![Solving a task](docs/screenshots/overlay-solve.png) |
 
-![Полупрозрачное окно подсказок](docs/screenshots/overlay-transparent.png)
+![Semi-transparent hint window](docs/screenshots/overlay-transparent.png)
 
-| Первый запуск | Согласия |
+| First launch | Consent |
 |---|---|
-| ![Первый запуск](docs/screenshots/onboarding.png) | ![Согласия](docs/screenshots/consent.png) |
+| ![First launch](docs/screenshots/onboarding.png) | ![Consent](docs/screenshots/consent.png) |
 
-| Провайдеры | Приватность |
+| Providers | Privacy |
 |---|---|
-| ![Провайдеры](docs/screenshots/settings-providers.png) | ![Приватность](docs/screenshots/settings-privacy.png) |
+| ![Providers](docs/screenshots/settings-providers.png) | ![Privacy](docs/screenshots/settings-privacy.png) |
 
-## Установка на Mac
-Нужны macOS 13 или новее, Apple Silicon, [Node.js](https://nodejs.org) и [Homebrew](https://brew.sh). Готовой сборки нет, приложение собирается из исходников.
+## Install on a Mac
+You need macOS 13 or later, Apple Silicon, [Node.js](https://nodejs.org), and [Homebrew](https://brew.sh). There is no prebuilt release, so you build the app from source.
+
+If you plan to rebuild the app more than once, [create the signing certificate](#signing-certificate) first.
 
 ```bash
 git clone https://github.com/filooww/copilot.git
@@ -61,51 +65,71 @@ brew install whisper-cpp
 npm run install:mac
 ```
 
-Приложение появится в «Программах». При первом запуске разрешите доступ к микрофону и записи экрана: без второго разрешения не будет слышно собеседника.
+The app appears in Applications. On first launch, allow access to the microphone and screen recording. Without screen recording, the app can't hear the other person.
 
-macOS привязывает разрешения к подписи приложения. Чтобы не выдавать их после каждой сборки, создайте в Связке ключей самоподписанный сертификат для подписи кода с именем `Copilot Dev`. `scripts/sign-mac.sh` найдёт его сам, а без него подпишет приложение ad-hoc.
+### Signing certificate
+macOS ties privacy permissions to the app's signature. Without a stable signature, every rebuild counts as a new app, so macOS keeps asking for permissions or silently stops granting them. If you only build once, you can skip this step.
 
-### Claude по подписке
-Поставьте Claude Code и войдите через настройки приложения:
+To keep permissions across rebuilds:
+
+1. Open Keychain Access. On recent macOS versions it is at `/System/Library/CoreServices/Applications/Keychain Access.app`.
+2. Choose **Keychain Access → Certificate Assistant → Create a Certificate**.
+3. Set the name to `Copilot Dev`, the identity type to **Self Signed Root**, and the certificate type to **Code Signing**.
+4. Run `npm run install:mac` again.
+
+`scripts/sign-mac.sh` finds the certificate by name. Without it, the script falls back to an ad-hoc signature and prints a warning.
+
+If permissions are already stuck, reset them and launch the app again:
+
+```bash
+tccutil reset ScreenCapture app.copilot
+```
+
+```bash
+tccutil reset Microphone app.copilot
+```
+
+### Claude with your subscription
+Install Claude Code, then sign in from the app's settings:
 
 ```bash
 brew install --cask claude-code
 ```
 
-Запросы расходуют лимиты вашей подписки. Модели, требующие usage credits, без них не отвечают.
+Requests count toward your subscription limits. Models that require usage credits won't respond without them.
 
-## Первый запуск
-1. Выберите микрофон и системный звук.
-2. Скачайте модель распознавания: от 160 МБ до 1,3 ГБ.
-3. Подключите модель для ответов.
-4. Загрузите резюме и описание вакансии (PDF, DOCX, TXT).
+## First launch
+1. Choose your microphone and system audio.
+2. Download a speech recognition model, from 160 MB to 1.3 GB.
+3. Connect a model for answers.
+4. Upload your resume and the job description (PDF, DOCX, TXT).
 
-Чтобы текст уходил в облачную модель, включите это в «Настройки → Приватность». По умолчанию отправка выключена.
+To send text to a cloud model, turn that on in Settings → Privacy. It is off by default.
 
-## Режимы
-- **Интервью / звонок** отвечает только на голос собеседника из системного звука.
-- **Тренировка** отвечает и на голос из микрофона: подходит, если собеседник сидит рядом с вами.
+## Modes
+- **Interview / call** answers only the other person's voice from system audio.
+- **Practice** also answers the voice from your microphone, so use it when the other person is sitting next to you.
 
-## Горячие клавиши
+## Hotkeys
 | | macOS | Windows |
 |---|---|---|
-| Ответить | `⌃1` | `Ctrl+Alt+Enter` |
-| Решить задачу с экрана | `⌃2` | `Ctrl+Alt+X` |
-| Подробнее | `⌃3` | `Ctrl+Alt+E` |
-| Снимок области экрана | `⌃4` | `Ctrl+Alt+S` |
-| Автоответ | `⌃5` | `Ctrl+Alt+Q` |
-| Показать или скрыть подсказки | `⌃6` | `Ctrl+Alt+H` |
-| Начать сессию, пауза | `⌃7` | `Ctrl+Alt+L` |
-| Аварийная остановка | `⌃⌥⌫` | `Ctrl+Alt+Backspace` |
+| Answer | `⌃1` | `Ctrl+Alt+Enter` |
+| Solve a task from the screen | `⌃2` | `Ctrl+Alt+X` |
+| More detail | `⌃3` | `Ctrl+Alt+E` |
+| Capture a screen area | `⌃4` | `Ctrl+Alt+S` |
+| Auto-answer | `⌃5` | `Ctrl+Alt+Q` |
+| Show or hide hints | `⌃6` | `Ctrl+Alt+H` |
+| Start a session, pause | `⌃7` | `Ctrl+Alt+L` |
+| Emergency stop | `⌃⌥⌫` | `Ctrl+Alt+Backspace` |
 
-Клавиши меняются в настройках.
+You can change hotkeys in the settings.
 
-## Ограничения
-- Окно подсказок помечено как скрытое от захвата экрана, но это не гарантия: программы на ScreenCaptureKit в macOS 15 и новее его видят. Перед демонстрацией экрана проверяйте сами.
-- Снимок экрана отправляется выбранной модели, а значит, в облако, если модель облачная. Перед снимком уберите с экрана личное.
-- Записывать разговор и использовать AI-подсказки можно только там, где это разрешено. Предупреждайте участников. Приложение не обходит прокторинг и средства контроля.
+## Limitations
+- The hint window is flagged as hidden from screen capture, but that is not a guarantee: apps using ScreenCaptureKit on macOS 15 and later can still see it. Check for yourself before sharing your screen.
+- Screen captures go to the model you selected, which means the cloud if that model is a cloud one. **Solve** sends the whole screen right away, so clear anything private first.
+- Only record conversations and use AI hints where that is allowed, and tell the other participants. The app does not bypass proctoring or monitoring tools.
 
-## Для разработчиков
+## For developers
 ```bash
 npm install
 ```
@@ -118,7 +142,7 @@ npm test
 npm run dev
 ```
 
-Архитектура и решения описаны в `docs/pipeline/`.
+Architecture and design decisions are in `docs/pipeline/`.
 
-## Автор и лицензия
-Автор оригинала: [Magerko](https://github.com/Magerko), Telegram [@magerdev1](https://t.me/magerdev1). Лицензия MIT, см. [LICENSE](LICENSE).
+## Author and license
+Original author: [Magerko](https://github.com/Magerko), Telegram [@magerdev1](https://t.me/magerdev1). MIT license, see [LICENSE](LICENSE).
