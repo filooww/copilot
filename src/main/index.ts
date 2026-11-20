@@ -98,7 +98,7 @@ let quitting = false
 let flushAck: (() => void) | null = null
 const FLUSH_ACK_MS = 300
 // A partial in progress plus the final each hold the GPU for about a second.
-const SETTLE_MS = 5000
+const SETTLE_MS = 3000
 const shortcutConflicts: string[] = []
 
 function log(kind: string, data: unknown): void {
